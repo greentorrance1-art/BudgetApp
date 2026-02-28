@@ -1,38 +1,69 @@
-import { db, ensureSignedIn } from "./firebase.js";
-import {
-  doc,
-  onSnapshot,
-  setDoc,
-  serverTimestamp,
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { db } from './firebase.js';
+import { doc, getDoc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
-const HOUSEHOLD_ID = "my-household";
+const HOUSEHOLD_PATH = 'households/my-household/data/main';
+const FIELD_NAME = 'homeBudgetData';
 
-function budgetDocRef() {
-  return doc(db, "households", HOUSEHOLD_ID, "data", "main");
+let unsubscribe = null;
+let isLocalUpdate = false;
+
+export async function loadFromFirestore() {
+    try {
+        const docRef = doc(db, 'households/my-household/data', 'main');
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (data && data[FIELD_NAME]) {
+                return data[FIELD_NAME];
+            }
+        }
+        return null;
+    } catch (error) {
+        console.error('Error loading from Firestore:', error);
+        return null;
+    }
 }
 
-export async function subscribeToBudget(onData) {
-  await ensureSignedIn();
-  return onSnapshot(budgetDocRef(), (snap) => {
-    const docData = snap.data();
-    onData(docData?.homeBudgetData ?? null);
-  });
+export async function saveToFirestore(data) {
+    if (isLocalUpdate) {
+        return;
+    }
+    
+    try {
+        const docRef = doc(db, 'households/my-household/data', 'main');
+        await setDoc(docRef, {
+            [FIELD_NAME]: data
+        }, { merge: true });
+    } catch (error) {
+        console.error('Error saving to Firestore:', error);
+    }
 }
 
-export async function writeBudget(homeBudgetData) {
-  await ensureSignedIn();
-  await setDoc(
-    budgetDocRef(),
-    { homeBudgetData, updatedAt: serverTimestamp() },
-    { merge: true }
-  );
+export function subscribeToFirestore(callback) {
+    const docRef = doc(db, 'households/my-household/data', 'main');
+    
+    unsubscribe = onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (data && data[FIELD_NAME]) {
+                isLocalUpdate = true;
+                callback(data[FIELD_NAME]);
+                setTimeout(() => {
+                    isLocalUpdate = false;
+                }, 100);
+            }
+        }
+    }, (error) => {
+        console.error('Error listening to Firestore:', error);
+    });
+    
+    return unsubscribe;
 }
 
-export function debounce(fn, delay = 600) {
-  let t;
-  return (...args) => {
-    clearTimeout(t);
-    t = setTimeout(() => fn(...args), delay);
-  };
+export function unsubscribeFromFirestore() {
+    if (unsubscribe) {
+        unsubscribe();
+        unsubscribe = null;
+    }
 }
