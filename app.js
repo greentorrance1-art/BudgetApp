@@ -1,12 +1,10 @@
-import { subscribeToBudget, writeBudget, debounce } from "./syncService.js";let currentMonth = new Date().getMonth();
+let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
 let incomeChart = null;
 let expenseChart = null;
 let yearChart = null;
 
 const STORAGE_KEY = 'homeBudgetData';
-
-const writeBudgetDebounced = debounce((d) => writeBudget(d), 700);
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 function generateUniqueId() {
@@ -93,8 +91,6 @@ function getDefaultData() {
 
 function saveData(data) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    // Cloud sync (debounced)
-    writeBudgetDebounced(data);
 }
 
 function getCurrentMonthData(data) {
@@ -817,7 +813,7 @@ function renderAll(data) {
     updateOverview(data);
 }
 
-async function init() {
+function init() {
     const data = loadData();
 
     initializeYearSelector();
@@ -828,19 +824,8 @@ async function init() {
     applyTheme(data.theme || 'light');
 
     renderAll(data);
-    setupEventListeners();
 
-    // Realtime sync IN: whenever Firestore updates, update local data + re-render
-    subscribeToBudget((cloudData) => {
-        if (!cloudData) return;
-        // Keep localStorage in sync so existing loadData() calls keep working
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudData));
-        applyTheme(cloudData.theme || 'light');
-        renderAll(cloudData);
-    }).catch((err) => {
-        console.error('Firebase sync error:', err);
-        // Avoid breaking the app if user cancels login
-    });
+    setupEventListeners();
 }
 
 document.addEventListener('DOMContentLoaded', init);
