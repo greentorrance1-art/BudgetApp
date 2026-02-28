@@ -11,7 +11,7 @@ export async function loadFromFirestore() {
     try {
         const docRef = doc(db, 'households/my-household/data', 'main');
         const docSnap = await getDoc(docRef);
-        
+
         if (docSnap.exists()) {
             const data = docSnap.data();
             if (data && data[FIELD_NAME]) {
@@ -29,7 +29,7 @@ export async function saveToFirestore(data) {
     if (isSyncing) {
         return;
     }
-    
+
     try {
         const docRef = doc(db, 'households/my-household/data', 'main');
         await setDoc(docRef, {
@@ -42,7 +42,7 @@ export async function saveToFirestore(data) {
 
 export function subscribeToFirestore(callback) {
     const docRef = doc(db, 'households/my-household/data', 'main');
-    
+
     unsubscribe = onSnapshot(docRef, (docSnap) => {
         if (docSnap.exists()) {
             const data = docSnap.data();
@@ -57,7 +57,7 @@ export function subscribeToFirestore(callback) {
     }, (error) => {
         console.error('Error listening to Firestore:', error);
     });
-    
+
     return unsubscribe;
 }
 
