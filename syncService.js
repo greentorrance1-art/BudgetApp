@@ -1,11 +1,11 @@
 import { db } from './firebase.js';
 import { doc, getDoc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
-const HOUSEHOLD_PATH = 'households/my-household/data/main';
+const HOUSEHOLD_DOC = 'households/my-household/data/main';
 const FIELD_NAME = 'homeBudgetData';
 
 let unsubscribe = null;
-let isLocalUpdate = false;
+let isSyncing = false;
 
 export async function loadFromFirestore() {
     try {
@@ -26,7 +26,7 @@ export async function loadFromFirestore() {
 }
 
 export async function saveToFirestore(data) {
-    if (isLocalUpdate) {
+    if (isSyncing) {
         return;
     }
     
@@ -47,10 +47,10 @@ export function subscribeToFirestore(callback) {
         if (docSnap.exists()) {
             const data = docSnap.data();
             if (data && data[FIELD_NAME]) {
-                isLocalUpdate = true;
+                isSyncing = true;
                 callback(data[FIELD_NAME]);
                 setTimeout(() => {
-                    isLocalUpdate = false;
+                    isSyncing = false;
                 }, 100);
             }
         }
