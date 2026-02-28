@@ -1,4 +1,4 @@
-let currentMonth = new Date().getMonth();
+import { subscribeToBudget, writeBudget, debounce } from "./syncService.js";let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
 let incomeChart = null;
 let expenseChart = null;
