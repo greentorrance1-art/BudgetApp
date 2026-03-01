@@ -911,6 +911,39 @@ function setupEventListeners() {
             alert('All data has been reset.');
         }
     });
+
+    document.getElementById('signOutBtn').addEventListener('click', async () => {
+        if (confirm('Are you sure you want to sign out?')) {
+            try {
+                console.log('[Auth] Signing out...');
+
+                // Stop Firestore listener
+                if (unsubscribe) {
+                    console.log('[Firestore] Stopping listener');
+                    unsubscribe();
+                    unsubscribe = null;
+                }
+
+                // Disable Firebase sync
+                useFirebaseSync = false;
+
+                // Reset app initialization flag
+                isAppInitialized = false;
+
+                // Sign out from Firebase
+                await auth.signOut();
+                console.log('[Auth] Sign out successful');
+
+                // Close settings modal
+                document.getElementById('settingsModal').style.display = 'none';
+
+                // The onAuthStateChanged listener will automatically show the login form
+            } catch (error) {
+                console.error('[Auth] Sign out failed:', error.code, error.message);
+                alert('Sign out failed: ' + error.message);
+            }
+        }
+    });
 }
 
 function getCurrentChartType(chart) {
