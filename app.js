@@ -1,3 +1,6 @@
+// Firebase will be loaded via CDN in index.html
+// Firebase variables will be initialized after Firebase loads
+
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
 let incomeChart = null;
@@ -5,8 +8,10 @@ let expenseChart = null;
 let yearChart = null;
 let useFirebaseSync = false;
 let isAppInitialized = false;
+
 const STORAGE_KEY = 'homeBudgetData';
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
 // Firebase config and initialization
 const firebaseConfig = {
     apiKey: "AIzaSyAwklkbyuiuHaMGpU8pJ5DsWi33i44Ljv4",
@@ -17,20 +22,24 @@ const firebaseConfig = {
     appId: "1:365690860963:web:84ad0e1731fd3aa4ccd616",
     measurementId: "G-G5HK6VM4L0"
 };
+
 let auth, db;
 let unsubscribe = null;
 let isSyncing = false;
+
 function initFirebase() {
     console.log('[Firebase] Initializing from:', location.origin);
     const app = firebase.initializeApp(firebaseConfig);
     auth = firebase.auth();
     db = firebase.firestore();
 }
+
 async function loadFromFirestore() {
     try {
         console.log('[Firestore] Loading from: households/my-household/data/main');
         const docRef = db.collection('households').doc('my-household').collection('data').doc('main');
         const docSnap = await docRef.get();
+
         if (docSnap.exists) {
             const data = docSnap.data();
             if (data && data.homeBudgetData) {
@@ -45,11 +54,13 @@ async function loadFromFirestore() {
         return null;
     }
 }
+
 async function saveToFirestore(data) {
     if (isSyncing) {
         console.log('[Firestore] Skipping save (sync in progress)');
         return;
     }
+
     try {
         console.log('[Firestore] Saving to: households/my-household/data/main');
         const docRef = db.collection('households').doc('my-household').collection('data').doc('main');
@@ -61,9 +72,11 @@ async function saveToFirestore(data) {
         console.error('[Firestore] Error saving:', error.code, error.message);
     }
 }
+
 function subscribeToFirestore(callback) {
     console.log('[Firestore] Starting real-time listener');
     const docRef = db.collection('households').doc('my-household').collection('data').doc('main');
+
     unsubscribe = docRef.onSnapshot((docSnap) => {
         if (docSnap.exists) {
             const data = docSnap.data();
@@ -80,19 +93,23 @@ function subscribeToFirestore(callback) {
         console.error('[Firestore] Listener error:', error.code, error.message);
     });
 }
+
 function generateUniqueId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
+
 function generateRandomColor() {
     const hue = Math.floor(Math.random() * 360);
     return `hsl(${hue}, 70%, 60%)`;
 }
+
 function generateUniqueColors(count, existingColors = []) {
     const colors = [];
     const existingHues = existingColors.map(color => {
         const match = color.match(/hsl\((\d+)/);
         return match ? parseInt(match[1]) : null;
     }).filter(h => h !== null);
+
     for (let i = 0; i < count; i++) {
         let color;
         let attempts = 0;
@@ -110,13 +127,16 @@ function generateUniqueColors(count, existingColors = []) {
     }
     return colors;
 }
+
 async function loadData() {
     if (useFirebaseSync) {
         const firestoreData = await loadFromFirestore();
+
         if (firestoreData) {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(firestoreData));
             return firestoreData;
         }
+
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
             try {
@@ -130,6 +150,7 @@ async function loadData() {
                 return defaultData;
             }
         }
+
         const defaultData = getDefaultData();
         await saveToFirestore(defaultData);
         return defaultData;
@@ -146,15 +167,18 @@ async function loadData() {
         return getDefaultData();
     }
 }
+
 function getDefaultData() {
     const data = {
         theme: 'light',
         years: {}
     };
+
     const sampleIncome = [
         { id: generateUniqueId(), description: 'Salary', estimated: 5000, actual: 5000 },
         { id: generateUniqueId(), description: 'Side Income', estimated: 800, actual: 750 }
     ];
+
     const sampleExpenses = [
         { id: generateUniqueId(), description: 'Rent', estimated: 1500, actual: 1500 },
         { id: generateUniqueId(), description: 'Food', estimated: 600, actual: 650 },
@@ -162,8 +186,10 @@ function getDefaultData() {
         { id: generateUniqueId(), description: 'Transportation', estimated: 300, actual: 320 },
         { id: generateUniqueId(), description: 'Subscriptions', estimated: 100, actual: 95 }
     ];
+
     const incomeColors = generateUniqueColors(sampleIncome.length);
     const expenseColors = generateUniqueColors(sampleExpenses.length);
+
     data.years[currentYear] = {};
     for (let m = 0; m < 12; m++) {
         data.years[currentYear][m] = {
@@ -173,14 +199,17 @@ function getDefaultData() {
             expenseColors: m === currentMonth ? expenseColors : []
         };
     }
+
     return data;
 }
+
 async function saveData(data) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     if (useFirebaseSync) {
         await saveToFirestore(data);
     }
 }
+
 function getCurrentMonthData(data) {
     if (!data.years[currentYear]) {
         data.years[currentYear] = {};
@@ -195,22 +224,27 @@ function getCurrentMonthData(data) {
     }
     return data.years[currentYear][currentMonth];
 }
+
 function formatCurrency(value) {
     return '$' + parseFloat(value || 0).toFixed(2);
 }
+
 function parseNumber(value) {
     const num = parseFloat(value);
     return isNaN(num) ? 0 : num;
 }
+
 function renderIncomeTable(data) {
     const monthData = getCurrentMonthData(data);
     const tbody = document.getElementById('incomeTableBody');
     tbody.innerHTML = '';
+
     monthData.income.forEach((item, index) => {
         const row = document.createElement('tr');
         const estimated = parseNumber(item.estimated);
         const actual = parseNumber(item.actual);
         const diff = actual - estimated;
+
         row.innerHTML = `
             <td>${index + 1}</td>
             <td><input type="text" value="${item.description}" data-id="${item.id}" data-field="description" data-type="income"></td>
@@ -221,17 +255,21 @@ function renderIncomeTable(data) {
         `;
         tbody.appendChild(row);
     });
+
     updateTotals(data);
 }
+
 function renderExpenseTable(data) {
     const monthData = getCurrentMonthData(data);
     const tbody = document.getElementById('expenseTableBody');
     tbody.innerHTML = '';
+
     monthData.expenses.forEach((item, index) => {
         const row = document.createElement('tr');
         const estimated = parseNumber(item.estimated);
         const actual = parseNumber(item.actual);
         const diff = actual - estimated;
+
         row.innerHTML = `
             <td>${index + 1}</td>
             <td><input type="text" value="${item.description}" data-id="${item.id}" data-field="description" data-type="expense"></td>
@@ -242,53 +280,70 @@ function renderExpenseTable(data) {
         `;
         tbody.appendChild(row);
     });
+
     updateTotals(data);
 }
+
 function updateTotals(data) {
     const monthData = getCurrentMonthData(data);
+
     const incomeEstTotal = monthData.income.reduce((sum, item) => sum + parseNumber(item.estimated), 0);
     const incomeActTotal = monthData.income.reduce((sum, item) => sum + parseNumber(item.actual), 0);
     const incomeDiffTotal = incomeActTotal - incomeEstTotal;
+
     const expenseEstTotal = monthData.expenses.reduce((sum, item) => sum + parseNumber(item.estimated), 0);
     const expenseActTotal = monthData.expenses.reduce((sum, item) => sum + parseNumber(item.actual), 0);
     const expenseDiffTotal = expenseActTotal - expenseEstTotal;
+
     document.getElementById('totalIncomeEst').textContent = formatCurrency(incomeEstTotal);
     document.getElementById('totalIncomeAct').textContent = formatCurrency(incomeActTotal);
     document.getElementById('totalIncomeDiff').textContent = formatCurrency(incomeDiffTotal);
     document.getElementById('totalIncomeDiff').className = incomeDiffTotal >= 0 ? 'positive' : 'negative';
+
     document.getElementById('totalExpenseEst').textContent = formatCurrency(expenseEstTotal);
     document.getElementById('totalExpenseAct').textContent = formatCurrency(expenseActTotal);
     document.getElementById('totalExpenseDiff').textContent = formatCurrency(expenseDiffTotal);
     document.getElementById('totalExpenseDiff').className = expenseDiffTotal <= 0 ? 'positive' : 'negative';
+
     updateOverview(data);
 }
+
 function updateOverview(data) {
     const monthData = getCurrentMonthData(data);
+
     const incomeEstTotal = monthData.income.reduce((sum, item) => sum + parseNumber(item.estimated), 0);
     const incomeActTotal = monthData.income.reduce((sum, item) => sum + parseNumber(item.actual), 0);
     const incomeDiffTotal = incomeActTotal - incomeEstTotal;
+
     const expenseEstTotal = monthData.expenses.reduce((sum, item) => sum + parseNumber(item.estimated), 0);
     const expenseActTotal = monthData.expenses.reduce((sum, item) => sum + parseNumber(item.actual), 0);
     const expenseDiffTotal = expenseActTotal - expenseEstTotal;
+
     const savingsEst = incomeEstTotal - expenseEstTotal;
     const savingsAct = incomeActTotal - expenseActTotal;
     const savingsDiff = savingsAct - savingsEst;
+
     document.getElementById('overviewIncomeEst').textContent = formatCurrency(incomeEstTotal);
     document.getElementById('overviewIncomeAct').textContent = formatCurrency(incomeActTotal);
     document.getElementById('overviewIncomeDiff').textContent = formatCurrency(incomeDiffTotal);
     document.getElementById('overviewIncomeDiff').className = 'metric-value ' + (incomeDiffTotal >= 0 ? 'positive' : 'negative');
+
     document.getElementById('overviewExpensesEst').textContent = formatCurrency(expenseEstTotal);
     document.getElementById('overviewExpensesAct').textContent = formatCurrency(expenseActTotal);
     document.getElementById('overviewExpensesDiff').textContent = formatCurrency(expenseDiffTotal);
     document.getElementById('overviewExpensesDiff').className = 'metric-value ' + (expenseDiffTotal <= 0 ? 'positive' : 'negative');
+
     document.getElementById('overviewSavingsEst').textContent = formatCurrency(savingsEst);
     document.getElementById('overviewSavingsAct').textContent = formatCurrency(savingsAct);
     document.getElementById('overviewSavingsDiff').textContent = formatCurrency(savingsDiff);
     document.getElementById('overviewSavingsDiff').className = 'metric-value ' + (savingsDiff >= 0 ? 'positive' : 'negative');
+
     const savingsRateEst = incomeEstTotal > 0 ? (savingsEst / incomeEstTotal * 100) : 0;
     const savingsRateAct = incomeActTotal > 0 ? (savingsAct / incomeActTotal * 100) : 0;
+
     document.getElementById('savingsRateEst').textContent = savingsRateEst.toFixed(1) + '%';
     document.getElementById('savingsRateAct').textContent = savingsRateAct.toFixed(1) + '%';
+
     const badge = document.getElementById('savingsHealthBadge');
     badge.className = 'badge';
     if (savingsRateAct >= 20) {
@@ -302,17 +357,22 @@ function updateOverview(data) {
         badge.classList.add('risk');
     }
 }
+
 function renderIncomeChart(data, type = 'actual') {
     const monthData = getCurrentMonthData(data);
     const canvas = document.getElementById('incomeChart');
     const ctx = canvas.getContext('2d');
+
     if (incomeChart) {
         incomeChart.destroy();
     }
+
     const labels = monthData.income.map(item => item.description || 'Unnamed');
     const values = monthData.income.map(item => parseNumber(item[type]));
     const colors = monthData.incomeColors;
+
     const total = values.reduce((sum, val) => sum + val, 0);
+
     incomeChart = new Chart(ctx, {
         type: 'pie',
         data: {
@@ -351,17 +411,22 @@ function renderIncomeChart(data, type = 'actual') {
         }
     });
 }
+
 function renderExpenseChart(data, type = 'actual') {
     const monthData = getCurrentMonthData(data);
     const canvas = document.getElementById('expenseChart');
     const ctx = canvas.getContext('2d');
+
     if (expenseChart) {
         expenseChart.destroy();
     }
+
     const labels = monthData.expenses.map(item => item.description || 'Unnamed');
     const values = monthData.expenses.map(item => parseNumber(item[type]));
     const colors = monthData.expenseColors;
+
     const total = values.reduce((sum, val) => sum + val, 0);
+
     expenseChart = new Chart(ctx, {
         type: 'pie',
         data: {
@@ -400,23 +465,30 @@ function renderExpenseChart(data, type = 'actual') {
         }
     });
 }
+
 function renderYearSummary(data) {
     const tbody = document.getElementById('summaryTableBody');
     tbody.innerHTML = '';
+
     if (!data.years[currentYear]) {
         data.years[currentYear] = {};
     }
+
     for (let m = 0; m < 12; m++) {
         const monthData = data.years[currentYear][m] || { income: [], expenses: [] };
+
         const incomeEst = monthData.income.reduce((sum, item) => sum + parseNumber(item.estimated), 0);
         const incomeAct = monthData.income.reduce((sum, item) => sum + parseNumber(item.actual), 0);
         const incomeDiff = incomeAct - incomeEst;
+
         const expenseEst = monthData.expenses.reduce((sum, item) => sum + parseNumber(item.estimated), 0);
         const expenseAct = monthData.expenses.reduce((sum, item) => sum + parseNumber(item.actual), 0);
         const expenseDiff = expenseAct - expenseEst;
+
         const savingsEst = incomeEst - expenseEst;
         const savingsAct = incomeAct - expenseAct;
         const savingsDiff = savingsAct - savingsEst;
+
         const row = document.createElement('tr');
         row.innerHTML = `
             <td><strong>${MONTHS[m]}</strong></td>
@@ -432,28 +504,37 @@ function renderYearSummary(data) {
         `;
         tbody.appendChild(row);
     }
+
     renderYearChart(data);
 }
+
 function renderYearChart(data) {
     const canvas = document.getElementById('yearChart');
     const ctx = canvas.getContext('2d');
+
     if (yearChart) {
         yearChart.destroy();
     }
+
     if (!data.years[currentYear]) {
         data.years[currentYear] = {};
     }
+
     const estimatedSavings = [];
     const actualSavings = [];
+
     for (let m = 0; m < 12; m++) {
         const monthData = data.years[currentYear][m] || { income: [], expenses: [] };
+
         const incomeEst = monthData.income.reduce((sum, item) => sum + parseNumber(item.estimated), 0);
         const incomeAct = monthData.income.reduce((sum, item) => sum + parseNumber(item.actual), 0);
         const expenseEst = monthData.expenses.reduce((sum, item) => sum + parseNumber(item.estimated), 0);
         const expenseAct = monthData.expenses.reduce((sum, item) => sum + parseNumber(item.actual), 0);
+
         estimatedSavings.push(incomeEst - expenseEst);
         actualSavings.push(incomeAct - expenseAct);
     }
+
     yearChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -526,10 +607,12 @@ function renderYearChart(data) {
         }
     });
 }
+
 function initializeYearSelector() {
     const yearSelector = document.getElementById('yearSelector');
     const startYear = 2020;
     const endYear = currentYear + 5;
+
     for (let year = startYear; year <= endYear; year++) {
         const option = document.createElement('option');
         option.value = year;
@@ -540,8 +623,10 @@ function initializeYearSelector() {
         yearSelector.appendChild(option);
     }
 }
+
 function renderColorSettings(data) {
     const monthData = getCurrentMonthData(data);
+
     const incomeList = document.getElementById('incomeColorsList');
     incomeList.innerHTML = '<h4>Income Colors</h4>';
     monthData.income.forEach((item, index) => {
@@ -553,6 +638,7 @@ function renderColorSettings(data) {
         `;
         incomeList.appendChild(colorItem);
     });
+
     const expenseList = document.getElementById('expenseColorsList');
     expenseList.innerHTML = '<h4>Expense Colors</h4>';
     monthData.expenses.forEach((item, index) => {
@@ -565,37 +651,44 @@ function renderColorSettings(data) {
         expenseList.appendChild(colorItem);
     });
 }
+
 function setupEventListeners() {
     document.getElementById('monthSelector').addEventListener('change', async (e) => {
         currentMonth = parseInt(e.target.value);
         const data = await loadData();
         renderAll(data);
     });
+
     document.getElementById('yearSelector').addEventListener('change', async (e) => {
         currentYear = parseInt(e.target.value);
         const data = await loadData();
         renderAll(data);
     });
+
     document.getElementById('themeToggle').addEventListener('click', async () => {
         const data = await loadData();
         data.theme = data.theme === 'light' ? 'dark' : 'light';
         applyTheme(data.theme);
         await saveData(data);
     });
+
     document.getElementById('settingsBtn').addEventListener('click', async () => {
         const data = await loadData();
         renderColorSettings(data);
         document.getElementById('settingsModal').style.display = 'block';
     });
+
     document.getElementById('closeSettings').addEventListener('click', () => {
         document.getElementById('settingsModal').style.display = 'none';
     });
+
     window.addEventListener('click', (e) => {
         const modal = document.getElementById('settingsModal');
         if (e.target === modal) {
             modal.style.display = 'none';
         }
     });
+
     document.getElementById('addIncomeBtn').addEventListener('click', async () => {
         const data = await loadData();
         const monthData = getCurrentMonthData(data);
@@ -610,6 +703,7 @@ function setupEventListeners() {
         renderIncomeTable(data);
         renderIncomeChart(data, getCurrentChartType('income'));
     });
+
     document.getElementById('addExpenseBtn').addEventListener('click', async () => {
         const data = await loadData();
         const monthData = getCurrentMonthData(data);
@@ -624,12 +718,14 @@ function setupEventListeners() {
         renderExpenseTable(data);
         renderExpenseChart(data, getCurrentChartType('expense'));
     });
+
     document.addEventListener('click', async (e) => {
         if (e.target.classList.contains('delete-btn')) {
             const id = e.target.dataset.id;
             const type = e.target.dataset.type;
             const data = await loadData();
             const monthData = getCurrentMonthData(data);
+
             if (type === 'income') {
                 const index = monthData.income.findIndex(item => item.id === id);
                 if (index !== -1) {
@@ -652,16 +748,20 @@ function setupEventListeners() {
             renderYearSummary(data);
         }
     });
+
     document.addEventListener('input', async (e) => {
         if (e.target.tagName === 'INPUT' && e.target.dataset.id) {
             const id = e.target.dataset.id;
             const field = e.target.dataset.field;
             const type = e.target.dataset.type;
             const value = e.target.value;
+
             const data = await loadData();
             const monthData = getCurrentMonthData(data);
+
             const array = type === 'income' ? monthData.income : monthData.expenses;
             const item = array.find(item => item.id === id);
+
             if (item) {
                 if (field === 'description') {
                     item[field] = value;
@@ -670,6 +770,7 @@ function setupEventListeners() {
                 }
                 await saveData(data);
                 updateTotals(data);
+
                 if (type === 'income') {
                     renderIncomeChart(data, getCurrentChartType('income'));
                 } else {
@@ -678,12 +779,15 @@ function setupEventListeners() {
                 renderYearSummary(data);
             }
         }
+
         if (e.target.type === 'color') {
             const type = e.target.dataset.type;
             const index = parseInt(e.target.dataset.index);
             const color = e.target.value;
+
             const data = await loadData();
             const monthData = getCurrentMonthData(data);
+
             if (type === 'income') {
                 monthData.incomeColors[index] = color;
                 renderIncomeChart(data, getCurrentChartType('income'));
@@ -694,14 +798,18 @@ function setupEventListeners() {
             await saveData(data);
         }
     });
+
     document.addEventListener('keydown', async (e) => {
         if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.dataset.id) {
             const type = e.target.dataset.type;
             const id = e.target.dataset.id;
+
             const data = await loadData();
             const monthData = getCurrentMonthData(data);
+
             const array = type === 'income' ? monthData.income : monthData.expenses;
             const index = array.findIndex(item => item.id === id);
+
             if (index === array.length - 1) {
                 if (type === 'income') {
                     document.getElementById('addIncomeBtn').click();
@@ -711,14 +819,17 @@ function setupEventListeners() {
             }
         }
     });
+
     document.querySelectorAll('.toggle-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             const chartType = e.target.dataset.chart;
             const dataType = e.target.dataset.type;
+
             document.querySelectorAll(`.toggle-btn[data-chart="${chartType}"]`).forEach(b => {
                 b.classList.remove('active');
             });
             e.target.classList.add('active');
+
             const data = await loadData();
             if (chartType === 'income') {
                 renderIncomeChart(data, dataType);
@@ -727,6 +838,7 @@ function setupEventListeners() {
             }
         });
     });
+
     document.getElementById('randomizeIncomeColors').addEventListener('click', async () => {
         const data = await loadData();
         const monthData = getCurrentMonthData(data);
@@ -735,6 +847,7 @@ function setupEventListeners() {
         renderColorSettings(data);
         renderIncomeChart(data, getCurrentChartType('income'));
     });
+
     document.getElementById('randomizeExpenseColors').addEventListener('click', async () => {
         const data = await loadData();
         const monthData = getCurrentMonthData(data);
@@ -743,6 +856,7 @@ function setupEventListeners() {
         renderColorSettings(data);
         renderExpenseChart(data, getCurrentChartType('expense'));
     });
+
     document.getElementById('exportDataBtn').addEventListener('click', async () => {
         const data = await loadData();
         const dataStr = JSON.stringify(data, null, 2);
@@ -754,9 +868,11 @@ function setupEventListeners() {
         a.click();
         URL.revokeObjectURL(url);
     });
+
     document.getElementById('importDataBtn').addEventListener('click', () => {
         document.getElementById('importFileInput').click();
     });
+
     document.getElementById('importFileInput').addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -776,6 +892,7 @@ function setupEventListeners() {
         }
         e.target.value = '';
     });
+
     document.getElementById('resetDataBtn').addEventListener('click', async () => {
         if (confirm('Are you sure you want to reset all data? This action cannot be undone.')) {
             const defaultData = getDefaultData();
@@ -786,10 +903,12 @@ function setupEventListeners() {
         }
     });
 }
+
 function getCurrentChartType(chart) {
     const activeBtn = document.querySelector(`.toggle-btn[data-chart="${chart}"].active`);
     return activeBtn ? activeBtn.dataset.type : 'actual';
 }
+
 function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
     const btn = document.getElementById('themeToggle');
@@ -799,6 +918,7 @@ function applyTheme(theme) {
         btn.textContent = '🌙 Dark Mode';
     }
 }
+
 function renderAll(data) {
     renderIncomeTable(data);
     renderExpenseTable(data);
@@ -807,19 +927,27 @@ function renderAll(data) {
     renderYearSummary(data);
     updateOverview(data);
 }
+
 async function initApp() {
     if (isAppInitialized) {
         console.log('[App] Already initialized');
         return;
     }
     isAppInitialized = true;
+
     const data = await loadData();
+
     initializeYearSelector();
+
     const monthSelector = document.getElementById('monthSelector');
     monthSelector.value = currentMonth;
+
     applyTheme(data.theme || 'light');
+
     renderAll(data);
+
     setupEventListeners();
+
     if (useFirebaseSync) {
         subscribeToFirestore((updatedData) => {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedData));
@@ -827,9 +955,11 @@ async function initApp() {
         });
     }
 }
+
 function showLoginForm() {
     const existingLogin = document.getElementById('loginModal');
     if (existingLogin) return;
+
     const loginModal = document.createElement('div');
     loginModal.id = 'loginModal';
     loginModal.className = 'modal';
@@ -852,15 +982,18 @@ function showLoginForm() {
         </div>
     `;
     document.body.appendChild(loginModal);
+
     document.getElementById('loginBtn').addEventListener('click', async () => {
         const email = document.getElementById('loginEmail').value;
         const password = document.getElementById('loginPassword').value;
         const errorEl = document.getElementById('loginError');
+
         if (!email || !password) {
             errorEl.textContent = 'Please enter email and password';
             errorEl.style.display = 'block';
             return;
         }
+
         try {
             console.log('[Auth] Attempting login for:', email);
             await auth.signInWithEmailAndPassword(email, password);
@@ -873,22 +1006,27 @@ function showLoginForm() {
             errorEl.style.display = 'block';
         }
     });
+
     document.getElementById('continueLocalBtn').addEventListener('click', () => {
         console.log('[App] User chose local-only mode');
         useFirebaseSync = false;
         loginModal.remove();
         initApp();
     });
+
     document.getElementById('loginPassword').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             document.getElementById('loginBtn').click();
         }
     });
 }
+
 function startApp() {
     console.log('[App] Starting app initialization');
+
     // Initialize Firebase
     initFirebase();
+
     // Check auth state
     auth.onAuthStateChanged((user) => {
         console.log('[Auth] Auth state changed, user:', user ? user.email : 'null');
@@ -901,4 +1039,5 @@ function startApp() {
         }
     });
 }
+
 document.addEventListener('DOMContentLoaded', startApp);
