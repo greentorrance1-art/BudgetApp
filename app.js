@@ -1,11 +1,12 @@
-import { auth, signInWithEmailAndPassword, onAuthStateChanged } from './firebase.js';
 import { loadFromFirestore, saveToFirestore, subscribeToFirestore } from './syncService.js';
+import { auth, signInWithEmailAndPassword, onAuthStateChanged } from './firebase.js';
 
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
 let incomeChart = null;
 let expenseChart = null;
 let yearChart = null;
+let useFirebaseSync = false;
 
 const STORAGE_KEY = 'homeBudgetData';
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -44,17 +45,44 @@ function generateUniqueColors(count, existingColors = []) {
     return colors;
 }
 
-function loadData() {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-        try {
-            return JSON.parse(stored);
-        } catch (e) {
-            console.error('Error parsing stored data:', e);
-            return getDefaultData();
+async function loadData() {
+    if (useFirebaseSync) {
+        const firestoreData = await loadFromFirestore();
+
+        if (firestoreData) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(firestoreData));
+            return firestoreData;
         }
+
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+            try {
+                const localData = JSON.parse(stored);
+                await saveToFirestore(localData);
+                return localData;
+            } catch (e) {
+                console.error('[App] Error parsing stored data:', e);
+                const defaultData = getDefaultData();
+                await saveToFirestore(defaultData);
+                return defaultData;
+            }
+        }
+
+        const defaultData = getDefaultData();
+        await saveToFirestore(defaultData);
+        return defaultData;
+    } else {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+            try {
+                return JSON.parse(stored);
+            } catch (e) {
+                console.error('[App] Error parsing stored data:', e);
+                return getDefaultData();
+            }
+        }
+        return getDefaultData();
     }
-    return getDefaultData();
 }
 
 function getDefaultData() {
@@ -92,10 +120,11 @@ function getDefaultData() {
     return data;
 }
 
-function saveData(data) {
+async function saveData(data) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    // Fire-and-forget save (errors will show in console)
-    saveToFirestore(data).catch(() => {});
+    if (useFirebaseSync) {
+        await saveToFirestore(data);
+    }
 }
 
 function getCurrentMonthData(data) {
@@ -541,28 +570,27 @@ function renderColorSettings(data) {
 }
 
 function setupEventListeners() {
-
-    document.getElementById('monthSelector').addEventListener('change', (e) => {
+    document.getElementById('monthSelector').addEventListener('change', async (e) => {
         currentMonth = parseInt(e.target.value);
-        const data = loadData();
+        const data = await loadData();
         renderAll(data);
     });
 
-    document.getElementById('yearSelector').addEventListener('change', (e) => {
+    document.getElementById('yearSelector').addEventListener('change', async (e) => {
         currentYear = parseInt(e.target.value);
-        const data = loadData();
+        const data = await loadData();
         renderAll(data);
     });
 
-    document.getElementById('themeToggle').addEventListener('click', () => {
-        const data = loadData();
+    document.getElementById('themeToggle').addEventListener('click', async () => {
+        const data = await loadData();
         data.theme = data.theme === 'light' ? 'dark' : 'light';
         applyTheme(data.theme);
-        saveData(data);
+        await saveData(data);
     });
 
-    document.getElementById('settingsBtn').addEventListener('click', () => {
-        const data = loadData();
+    document.getElementById('settingsBtn').addEventListener('click', async () => {
+        const data = await loadData();
         renderColorSettings(data);
         document.getElementById('settingsModal').style.display = 'block';
     });
@@ -578,8 +606,8 @@ function setupEventListeners() {
         }
     });
 
-    document.getElementById('addIncomeBtn').addEventListener('click', () => {
-        const data = loadData();
+    document.getElementById('addIncomeBtn').addEventListener('click', async () => {
+        const data = await loadData();
         const monthData = getCurrentMonthData(data);
         monthData.income.push({
             id: generateUniqueId(),
@@ -588,13 +616,13 @@ function setupEventListeners() {
             actual: 0
         });
         monthData.incomeColors.push(generateUniqueColors(1, monthData.incomeColors)[0]);
-        saveData(data);
+        await saveData(data);
         renderIncomeTable(data);
         renderIncomeChart(data, getCurrentChartType('income'));
     });
 
-    document.getElementById('addExpenseBtn').addEventListener('click', () => {
-        const data = loadData();
+    document.getElementById('addExpenseBtn').addEventListener('click', async () => {
+        const data = await loadData();
         const monthData = getCurrentMonthData(data);
         monthData.expenses.push({
             id: generateUniqueId(),
@@ -603,16 +631,16 @@ function setupEventListeners() {
             actual: 0
         });
         monthData.expenseColors.push(generateUniqueColors(1, monthData.expenseColors)[0]);
-        saveData(data);
+        await saveData(data);
         renderExpenseTable(data);
         renderExpenseChart(data, getCurrentChartType('expense'));
     });
 
-    document.addEventListener('click', (e) => {
+    document.addEventListener('click', async (e) => {
         if (e.target.classList.contains('delete-btn')) {
             const id = e.target.dataset.id;
             const type = e.target.dataset.type;
-            const data = loadData();
+            const data = await loadData();
             const monthData = getCurrentMonthData(data);
 
             if (type === 'income') {
@@ -621,7 +649,7 @@ function setupEventListeners() {
                     monthData.income.splice(index, 1);
                     monthData.incomeColors.splice(index, 1);
                 }
-                saveData(data);
+                await saveData(data);
                 renderIncomeTable(data);
                 renderIncomeChart(data, getCurrentChartType('income'));
             } else {
@@ -630,7 +658,7 @@ function setupEventListeners() {
                     monthData.expenses.splice(index, 1);
                     monthData.expenseColors.splice(index, 1);
                 }
-                saveData(data);
+                await saveData(data);
                 renderExpenseTable(data);
                 renderExpenseChart(data, getCurrentChartType('expense'));
             }
@@ -638,14 +666,14 @@ function setupEventListeners() {
         }
     });
 
-    document.addEventListener('input', (e) => {
+    document.addEventListener('input', async (e) => {
         if (e.target.tagName === 'INPUT' && e.target.dataset.id) {
             const id = e.target.dataset.id;
             const field = e.target.dataset.field;
             const type = e.target.dataset.type;
             const value = e.target.value;
 
-            const data = loadData();
+            const data = await loadData();
             const monthData = getCurrentMonthData(data);
 
             const array = type === 'income' ? monthData.income : monthData.expenses;
@@ -657,7 +685,7 @@ function setupEventListeners() {
                 } else {
                     item[field] = parseNumber(value);
                 }
-                saveData(data);
+                await saveData(data);
                 updateTotals(data);
 
                 if (type === 'income') {
@@ -674,7 +702,7 @@ function setupEventListeners() {
             const index = parseInt(e.target.dataset.index);
             const color = e.target.value;
 
-            const data = loadData();
+            const data = await loadData();
             const monthData = getCurrentMonthData(data);
 
             if (type === 'income') {
@@ -684,16 +712,16 @@ function setupEventListeners() {
                 monthData.expenseColors[index] = color;
                 renderExpenseChart(data, getCurrentChartType('expense'));
             }
-            saveData(data);
+            await saveData(data);
         }
     });
 
-    document.addEventListener('keydown', (e) => {
+    document.addEventListener('keydown', async (e) => {
         if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.dataset.id) {
             const type = e.target.dataset.type;
             const id = e.target.dataset.id;
 
-            const data = loadData();
+            const data = await loadData();
             const monthData = getCurrentMonthData(data);
 
             const array = type === 'income' ? monthData.income : monthData.expenses;
@@ -710,7 +738,7 @@ function setupEventListeners() {
     });
 
     document.querySelectorAll('.toggle-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', async (e) => {
             const chartType = e.target.dataset.chart;
             const dataType = e.target.dataset.type;
 
@@ -719,7 +747,7 @@ function setupEventListeners() {
             });
             e.target.classList.add('active');
 
-            const data = loadData();
+            const data = await loadData();
             if (chartType === 'income') {
                 renderIncomeChart(data, dataType);
             } else {
@@ -728,26 +756,26 @@ function setupEventListeners() {
         });
     });
 
-    document.getElementById('randomizeIncomeColors').addEventListener('click', () => {
-        const data = loadData();
+    document.getElementById('randomizeIncomeColors').addEventListener('click', async () => {
+        const data = await loadData();
         const monthData = getCurrentMonthData(data);
         monthData.incomeColors = generateUniqueColors(monthData.income.length);
-        saveData(data);
+        await saveData(data);
         renderColorSettings(data);
         renderIncomeChart(data, getCurrentChartType('income'));
     });
 
-    document.getElementById('randomizeExpenseColors').addEventListener('click', () => {
-        const data = loadData();
+    document.getElementById('randomizeExpenseColors').addEventListener('click', async () => {
+        const data = await loadData();
         const monthData = getCurrentMonthData(data);
         monthData.expenseColors = generateUniqueColors(monthData.expenses.length);
-        saveData(data);
+        await saveData(data);
         renderColorSettings(data);
         renderExpenseChart(data, getCurrentChartType('expense'));
     });
 
-    document.getElementById('exportDataBtn').addEventListener('click', () => {
-        const data = loadData();
+    document.getElementById('exportDataBtn').addEventListener('click', async () => {
+        const data = await loadData();
         const dataStr = JSON.stringify(data, null, 2);
         const blob = new Blob([dataStr], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -762,14 +790,14 @@ function setupEventListeners() {
         document.getElementById('importFileInput').click();
     });
 
-    document.getElementById('importFileInput').addEventListener('change', (e) => {
+    document.getElementById('importFileInput').addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (file) {
             const reader = new FileReader();
-            reader.onload = (event) => {
+            reader.onload = async (event) => {
                 try {
                     const importedData = JSON.parse(event.target.result);
-                    saveData(importedData);
+                    await saveData(importedData);
                     renderAll(importedData);
                     document.getElementById('settingsModal').style.display = 'none';
                     alert('Data imported successfully!');
@@ -782,10 +810,10 @@ function setupEventListeners() {
         e.target.value = '';
     });
 
-    document.getElementById('resetDataBtn').addEventListener('click', () => {
+    document.getElementById('resetDataBtn').addEventListener('click', async () => {
         if (confirm('Are you sure you want to reset all data? This action cannot be undone.')) {
             const defaultData = getDefaultData();
-            saveData(defaultData);
+            await saveData(defaultData);
             renderAll(defaultData);
             document.getElementById('settingsModal').style.display = 'none';
             alert('All data has been reset.');
@@ -817,154 +845,105 @@ function renderAll(data) {
     updateOverview(data);
 }
 
-function createLoginOverlay() {
-    const overlay = document.createElement('div');
-    overlay.id = 'loginOverlay';
-    overlay.style.position = 'fixed';
-    overlay.style.inset = '0';
-    overlay.style.background = 'rgba(0,0,0,0.55)';
-    overlay.style.display = 'flex';
-    overlay.style.alignItems = 'center';
-    overlay.style.justifyContent = 'center';
-    overlay.style.zIndex = '9999';
+async function initApp() {
+    console.log('[App] Initializing app, useFirebaseSync:', useFirebaseSync);
+    const data = await loadData();
 
-    const card = document.createElement('div');
-    card.style.width = 'min(420px, 92vw)';
-    card.style.background = '#fff';
-    card.style.borderRadius = '14px';
-    card.style.padding = '18px';
-    card.style.boxShadow = '0 12px 40px rgba(0,0,0,0.25)';
-    card.style.fontFamily = 'system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif';
-
-    const title = document.createElement('div');
-    title.textContent = 'Login';
-    title.style.fontSize = '20px';
-    title.style.fontWeight = '700';
-    title.style.marginBottom = '10px';
-
-    const note = document.createElement('div');
-    note.textContent = 'Use your Firebase email + password. This unlocks shared real-time syncing.';
-    note.style.fontSize = '13px';
-    note.style.opacity = '0.75';
-    note.style.marginBottom = '14px';
-
-    const form = document.createElement('form');
-
-    const email = document.createElement('input');
-    email.type = 'email';
-    email.placeholder = 'Email';
-    email.required = true;
-    email.autocomplete = 'username';
-    email.style.width = '100%';
-    email.style.padding = '10px 12px';
-    email.style.border = '1px solid #ddd';
-    email.style.borderRadius = '10px';
-    email.style.marginBottom = '10px';
-
-    const pass = document.createElement('input');
-    pass.type = 'password';
-    pass.placeholder = 'Password';
-    pass.required = true;
-    pass.autocomplete = 'current-password';
-    pass.style.width = '100%';
-    pass.style.padding = '10px 12px';
-    pass.style.border = '1px solid #ddd';
-    pass.style.borderRadius = '10px';
-    pass.style.marginBottom = '12px';
-
-    const err = document.createElement('div');
-    err.id = 'loginError';
-    err.style.color = '#b00020';
-    err.style.fontSize = '13px';
-    err.style.minHeight = '18px';
-    err.style.marginBottom = '10px';
-
-    const btn = document.createElement('button');
-    btn.type = 'submit';
-    btn.textContent = 'Sign in';
-    btn.style.width = '100%';
-    btn.style.padding = '10px 12px';
-    btn.style.border = '0';
-    btn.style.borderRadius = '10px';
-    btn.style.background = '#111827';
-    btn.style.color = '#fff';
-    btn.style.fontWeight = '700';
-    btn.style.cursor = 'pointer';
-
-    form.appendChild(email);
-    form.appendChild(pass);
-    form.appendChild(err);
-    form.appendChild(btn);
-
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        err.textContent = '';
-        btn.disabled = true;
-        btn.textContent = 'Signing in...';
-        try {
-            await signInWithEmailAndPassword(auth, email.value.trim(), pass.value);
-        } catch (e2) {
-            err.textContent = (e2 && e2.message) ? e2.message : 'Login failed';
-            btn.disabled = false;
-            btn.textContent = 'Sign in';
-        }
-    });
-
-    card.appendChild(title);
-    card.appendChild(note);
-    card.appendChild(form);
-    overlay.appendChild(card);
-    document.body.appendChild(overlay);
-
-    return overlay;
-}
-
-async function bootstrapAfterAuth() {
-    // 1) Load Firestore -> if empty, push local -> else overwrite local
-    try {
-        const remote = await loadFromFirestore();
-        if (remote) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(remote));
-        } else {
-            // first run: seed Firestore with whatever local has
-            const local = loadData();
-            await saveToFirestore(local);
-        }
-    } catch (e) {
-        // If Firestore read fails (rules / network), still let app run locally
-        console.warn('Firestore not available yet; running with localStorage only.', e);
-    }
-
-    // 2) Render from local
-    const data = loadData();
     initializeYearSelector();
 
     const monthSelector = document.getElementById('monthSelector');
     monthSelector.value = currentMonth;
 
     applyTheme(data.theme || 'light');
+
     renderAll(data);
+
     setupEventListeners();
 
-    // 3) Subscribe for real-time updates
-    try {
+    if (useFirebaseSync) {
         subscribeToFirestore((updatedData) => {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedData));
             renderAll(updatedData);
         });
-    } catch (e) {
-        console.warn('Firestore subscribe failed:', e);
     }
 }
 
-function init() {
-    const overlay = createLoginOverlay();
+function showLoginForm() {
+    const existingLogin = document.getElementById('loginModal');
+    if (existingLogin) return;
 
+    const loginModal = document.createElement('div');
+    loginModal.id = 'loginModal';
+    loginModal.className = 'modal';
+    loginModal.style.display = 'block';
+    loginModal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Login to Budget App</h2>
+            </div>
+            <div class="modal-body">
+                <div class="settings-group">
+                    <p style="margin-bottom: 16px; color: var(--text-secondary); font-size: 14px;">Login to sync your budget with your household members, or continue without an account to use local storage only.</p>
+                    <input type="email" id="loginEmail" placeholder="Email" style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid var(--border-color); border-radius: 8px; background-color: var(--bg-secondary); color: var(--text-primary); font-size: 14px;">
+                    <input type="password" id="loginPassword" placeholder="Password" style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid var(--border-color); border-radius: 8px; background-color: var(--bg-secondary); color: var(--text-primary); font-size: 14px;">
+                    <button id="loginBtn" class="btn btn-primary" style="width: 100%; margin-bottom: 12px;">Login with Account</button>
+                    <button id="continueLocalBtn" class="btn btn-secondary" style="width: 100%;">Continue without account</button>
+                    <p id="loginError" style="color: var(--danger-color); margin-top: 12px; display: none;"></p>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(loginModal);
+
+    document.getElementById('loginBtn').addEventListener('click', async () => {
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+        const errorEl = document.getElementById('loginError');
+
+        if (!email || !password) {
+            errorEl.textContent = 'Please enter email and password';
+            errorEl.style.display = 'block';
+            return;
+        }
+
+        try {
+            console.log('[Auth] Attempting login for:', email);
+            await signInWithEmailAndPassword(auth, email, password);
+            console.log('[Auth] Login successful');
+            useFirebaseSync = true;
+            loginModal.remove();
+            initApp();
+        } catch (error) {
+            console.error('[Auth] Login failed:', error.code, error.message);
+            errorEl.textContent = 'Login failed: ' + error.message;
+            errorEl.style.display = 'block';
+        }
+    });
+
+    document.getElementById('continueLocalBtn').addEventListener('click', () => {
+        console.log('[App] User chose local-only mode');
+        useFirebaseSync = false;
+        loginModal.remove();
+        initApp();
+    });
+
+    document.getElementById('loginPassword').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            document.getElementById('loginBtn').click();
+        }
+    });
+}
+
+function init() {
+    console.log('[App] Starting app initialization');
     onAuthStateChanged(auth, (user) => {
+        console.log('[Auth] Auth state changed, user:', user ? user.email : 'null');
         if (user) {
-            // logged in
-            if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
-            bootstrapAfterAuth();
+            console.log('[Auth] User authenticated, enabling Firebase sync');
+            useFirebaseSync = true;
+            initApp();
+        } else {
+            showLoginForm();
         }
     });
 }
