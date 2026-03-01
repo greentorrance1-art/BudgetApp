@@ -1,5 +1,3 @@
-import { loadFromFirestore, saveToFirestore, subscribeToFirestore } from './syncService.js';
-import { auth, signInWithEmailAndPassword, onAuthStateChanged } from './firebase.js';
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
 let incomeChart = null;
@@ -9,6 +7,79 @@ let useFirebaseSync = false;
 let isAppInitialized = false;
 const STORAGE_KEY = 'homeBudgetData';
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+// Firebase config and initialization
+const firebaseConfig = {
+    apiKey: "AIzaSyAwklkbyuiuHaMGpU8pJ5DsWi33i44Ljv4",
+    authDomain: "production-mode-290db.firebaseapp.com",
+    projectId: "production-mode-290db",
+    storageBucket: "production-mode-290db.firebasestorage.app",
+    messagingSenderId: "365690860963",
+    appId: "1:365690860963:web:84ad0e1731fd3aa4ccd616",
+    measurementId: "G-G5HK6VM4L0"
+};
+let auth, db;
+let unsubscribe = null;
+let isSyncing = false;
+function initFirebase() {
+    console.log('[Firebase] Initializing from:', location.origin);
+    const app = firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth();
+    db = firebase.firestore();
+}
+async function loadFromFirestore() {
+    try {
+        console.log('[Firestore] Loading from: households/my-household/data/main');
+        const docRef = db.collection('households').doc('my-household').collection('data').doc('main');
+        const docSnap = await docRef.get();
+        if (docSnap.exists) {
+            const data = docSnap.data();
+            if (data && data.homeBudgetData) {
+                console.log('[Firestore] Data loaded successfully');
+                return data.homeBudgetData;
+            }
+        }
+        console.log('[Firestore] No data found in Firestore');
+        return null;
+    } catch (error) {
+        console.error('[Firestore] Error loading:', error.code, error.message);
+        return null;
+    }
+}
+async function saveToFirestore(data) {
+    if (isSyncing) {
+        console.log('[Firestore] Skipping save (sync in progress)');
+        return;
+    }
+    try {
+        console.log('[Firestore] Saving to: households/my-household/data/main');
+        const docRef = db.collection('households').doc('my-household').collection('data').doc('main');
+        await docRef.set({
+            homeBudgetData: data
+        }, { merge: true });
+        console.log('[Firestore] Save complete');
+    } catch (error) {
+        console.error('[Firestore] Error saving:', error.code, error.message);
+    }
+}
+function subscribeToFirestore(callback) {
+    console.log('[Firestore] Starting real-time listener');
+    const docRef = db.collection('households').doc('my-household').collection('data').doc('main');
+    unsubscribe = docRef.onSnapshot((docSnap) => {
+        if (docSnap.exists) {
+            const data = docSnap.data();
+            if (data && data.homeBudgetData) {
+                console.log('[Firestore] Real-time update received');
+                isSyncing = true;
+                callback(data.homeBudgetData);
+                setTimeout(() => {
+                    isSyncing = false;
+                }, 100);
+            }
+        }
+    }, (error) => {
+        console.error('[Firestore] Listener error:', error.code, error.message);
+    });
+}
 function generateUniqueId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
@@ -68,7 +139,7 @@ async function loadData() {
             try {
                 return JSON.parse(stored);
             } catch (e) {
-                console.error('[App] Error parsing stored data:', e);
+                console.error('Error parsing stored data:', e);
                 return getDefaultData();
             }
         }
@@ -738,10 +809,9 @@ function renderAll(data) {
 }
 async function initApp() {
     if (isAppInitialized) {
-        console.log('[App] Already initialized, skipping');
+        console.log('[App] Already initialized');
         return;
     }
-    console.log('[App] Initializing app, useFirebaseSync:', useFirebaseSync);
     isAppInitialized = true;
     const data = await loadData();
     initializeYearSelector();
@@ -793,10 +863,10 @@ function showLoginForm() {
         }
         try {
             console.log('[Auth] Attempting login for:', email);
-            await signInWithEmailAndPassword(auth, email, password);
+            await auth.signInWithEmailAndPassword(email, password);
             console.log('[Auth] Login successful');
             loginModal.remove();
-            // Don't call initApp() here - onAuthStateChanged will handle it
+            // onAuthStateChanged will handle calling initApp
         } catch (error) {
             console.error('[Auth] Login failed:', error.code, error.message);
             errorEl.textContent = 'Login failed: ' + error.message;
@@ -815,9 +885,12 @@ function showLoginForm() {
         }
     });
 }
-function init() {
+function startApp() {
     console.log('[App] Starting app initialization');
-    onAuthStateChanged(auth, (user) => {
+    // Initialize Firebase
+    initFirebase();
+    // Check auth state
+    auth.onAuthStateChanged((user) => {
         console.log('[Auth] Auth state changed, user:', user ? user.email : 'null');
         if (user) {
             console.log('[Auth] User authenticated, enabling Firebase sync');
@@ -828,4 +901,4 @@ function init() {
         }
     });
 }
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', startApp);
