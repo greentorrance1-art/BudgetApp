@@ -1,69 +1,64 @@
 import { db } from './firebase.js';
 import { doc, getDoc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
-const HOUSEHOLD_DOC = 'households/my-household/data/main';
+// Firestore doc: households/my-household/data/main
+const DOC_REF = doc(db, 'households', 'my-household', 'data', 'main');
 const FIELD_NAME = 'homeBudgetData';
 
-let unsubscribe = null;
-let isSyncing = false;
+let unsubscribeFn = null;
+let isApplyingRemote = false;
 
 export async function loadFromFirestore() {
-    try {
-        const docRef = doc(db, 'households/my-household/data', 'main');
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            if (data && data[FIELD_NAME]) {
-                return data[FIELD_NAME];
-            }
-        }
-        return null;
-    } catch (error) {
-        console.error('Error loading from Firestore:', error);
-        return null;
+  try {
+    const snap = await getDoc(DOC_REF);
+    if (snap.exists()) {
+      const d = snap.data();
+      return d && d[FIELD_NAME] ? d[FIELD_NAME] : null;
     }
+    return null;
+  } catch (err) {
+    console.error('loadFromFirestore failed:', err);
+    throw err;
+  }
 }
 
 export async function saveToFirestore(data) {
-    if (isSyncing) {
-        return;
-    }
+  // Prevent write-loop when we just applied a remote snapshot locally.
+  if (isApplyingRemote) return;
 
-    try {
-        const docRef = doc(db, 'households/my-household/data', 'main');
-        await setDoc(docRef, {
-            [FIELD_NAME]: data
-        }, { merge: true });
-    } catch (error) {
-        console.error('Error saving to Firestore:', error);
-    }
+  try {
+    await setDoc(DOC_REF, { [FIELD_NAME]: data }, { merge: true });
+  } catch (err) {
+    console.error('saveToFirestore failed:', err);
+    throw err;
+  }
 }
 
-export function subscribeToFirestore(callback) {
-    const docRef = doc(db, 'households/my-household/data', 'main');
+export function subscribeToFirestore(onData) {
+  if (unsubscribeFn) unsubscribeFn();
 
-    unsubscribe = onSnapshot(docRef, (docSnap) => {
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            if (data && data[FIELD_NAME]) {
-                isSyncing = true;
-                callback(data[FIELD_NAME]);
-                setTimeout(() => {
-                    isSyncing = false;
-                }, 100);
-            }
-        }
-    }, (error) => {
-        console.error('Error listening to Firestore:', error);
-    });
+  unsubscribeFn = onSnapshot(
+    DOC_REF,
+    (snap) => {
+      if (!snap.exists()) return;
+      const d = snap.data();
+      if (!d || !d[FIELD_NAME]) return;
 
-    return unsubscribe;
+      isApplyingRemote = true;
+      try {
+        onData(d[FIELD_NAME]);
+      } finally {
+        // tiny delay so any immediate saveData() calls don't loop
+        setTimeout(() => { isApplyingRemote = false; }, 50);
+      }
+    },
+    (err) => console.error('subscribeToFirestore error:', err)
+  );
+
+  return unsubscribeFn;
 }
 
 export function unsubscribeFromFirestore() {
-    if (unsubscribe) {
-        unsubscribe();
-        unsubscribe = null;
-    }
+  if (unsubscribeFn) unsubscribeFn();
+  unsubscribeFn = null;
 }
