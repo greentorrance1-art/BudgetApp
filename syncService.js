@@ -1,64 +1,78 @@
 import { db } from './firebase.js';
 import { doc, getDoc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
-// Firestore doc: households/my-household/data/main
-const DOC_REF = doc(db, 'households', 'my-household', 'data', 'main');
 const FIELD_NAME = 'homeBudgetData';
+const HOUSEHOLD_DOC_PATH = 'households/my-household/data/main';
 
-let unsubscribeFn = null;
-let isApplyingRemote = false;
+let unsubscribe = null;
+let isSyncing = false;
 
 export async function loadFromFirestore() {
-  try {
-    const snap = await getDoc(DOC_REF);
-    if (snap.exists()) {
-      const d = snap.data();
-      return d && d[FIELD_NAME] ? d[FIELD_NAME] : null;
+    try {
+        console.log('[Firestore] Loading from:', HOUSEHOLD_DOC_PATH);
+        const docRef = doc(db, 'households/my-household/data', 'main');
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (data && data[FIELD_NAME]) {
+                console.log('[Firestore] Data loaded successfully');
+                return data[FIELD_NAME];
+            }
+        }
+        console.log('[Firestore] No data found in Firestore');
+        return null;
+    } catch (error) {
+        console.error('[Firestore] Error loading:', error.code, error.message);
+        return null;
     }
-    return null;
-  } catch (err) {
-    console.error('loadFromFirestore failed:', err);
-    throw err;
-  }
 }
 
 export async function saveToFirestore(data) {
-  // Prevent write-loop when we just applied a remote snapshot locally.
-  if (isApplyingRemote) return;
+    if (isSyncing) {
+        console.log('[Firestore] Skipping save (sync in progress)');
+        return;
+    }
 
-  try {
-    await setDoc(DOC_REF, { [FIELD_NAME]: data }, { merge: true });
-  } catch (err) {
-    console.error('saveToFirestore failed:', err);
-    throw err;
-  }
+    try {
+        console.log('[Firestore] Saving to:', HOUSEHOLD_DOC_PATH);
+        const docRef = doc(db, 'households/my-household/data', 'main');
+        await setDoc(docRef, {
+            [FIELD_NAME]: data
+        }, { merge: true });
+        console.log('[Firestore] Save complete');
+    } catch (error) {
+        console.error('[Firestore] Error saving:', error.code, error.message);
+    }
 }
 
-export function subscribeToFirestore(onData) {
-  if (unsubscribeFn) unsubscribeFn();
+export function subscribeToFirestore(callback) {
+    console.log('[Firestore] Starting real-time listener');
+    const docRef = doc(db, 'households/my-household/data', 'main');
 
-  unsubscribeFn = onSnapshot(
-    DOC_REF,
-    (snap) => {
-      if (!snap.exists()) return;
-      const d = snap.data();
-      if (!d || !d[FIELD_NAME]) return;
+    unsubscribe = onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (data && data[FIELD_NAME]) {
+                console.log('[Firestore] Real-time update received');
+                isSyncing = true;
+                callback(data[FIELD_NAME]);
+                setTimeout(() => {
+                    isSyncing = false;
+                }, 100);
+            }
+        }
+    }, (error) => {
+        console.error('[Firestore] Listener error:', error.code, error.message);
+    });
 
-      isApplyingRemote = true;
-      try {
-        onData(d[FIELD_NAME]);
-      } finally {
-        // tiny delay so any immediate saveData() calls don't loop
-        setTimeout(() => { isApplyingRemote = false; }, 50);
-      }
-    },
-    (err) => console.error('subscribeToFirestore error:', err)
-  );
-
-  return unsubscribeFn;
+    return unsubscribe;
 }
 
 export function unsubscribeFromFirestore() {
-  if (unsubscribeFn) unsubscribeFn();
-  unsubscribeFn = null;
+    if (unsubscribe) {
+        console.log('[Firestore] Stopping listener');
+        unsubscribe();
+        unsubscribe = null;
+    }
 }
