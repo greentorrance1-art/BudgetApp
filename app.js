@@ -211,6 +211,15 @@ async function saveData(data) {
 }
 
 function getCurrentMonthData(data) {
+    if (!data || !data.years) {
+        console.error('[App] Invalid data object:', data);
+        return {
+            income: [],
+            expenses: [],
+            incomeColors: [],
+            expenseColors: []
+        };
+    }
     if (!data.years[currentYear]) {
         data.years[currentYear] = {};
     }
@@ -935,7 +944,18 @@ async function initApp() {
     }
     isAppInitialized = true;
 
+    console.log('[App] Loading data...');
     const data = await loadData();
+
+    if (!data || !data.years) {
+        console.error('[App] Failed to load valid data, using defaults');
+        const defaultData = getDefaultData();
+        await saveData(defaultData);
+        renderAll(defaultData);
+    } else {
+        console.log('[App] Data loaded successfully');
+        renderAll(data);
+    }
 
     initializeYearSelector();
 
@@ -943,8 +963,6 @@ async function initApp() {
     monthSelector.value = currentMonth;
 
     applyTheme(data.theme || 'light');
-
-    renderAll(data);
 
     setupEventListeners();
 
