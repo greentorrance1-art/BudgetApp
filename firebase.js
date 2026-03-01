@@ -3,7 +3,7 @@ import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from 'https:/
 import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
 const firebaseConfig = {
-    apiKey: "AIzaSyAwkLkbyuiuHaMGpU8pJ5DsWi33i44Ljv4",
+    apiKey: "AIzaSyAwklkbyuiuHaMGpU8pJ5DsWi33i44Ljv4",
     authDomain: "production-mode-290db.firebaseapp.com",
     projectId: "production-mode-290db",
     storageBucket: "production-mode-290db.firebasestorage.app",
