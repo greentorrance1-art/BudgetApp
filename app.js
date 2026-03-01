@@ -1,3 +1,6 @@
+import { auth, signInWithEmailAndPassword, onAuthStateChanged } from './firebase.js';
+import { loadFromFirestore, saveToFirestore, subscribeToFirestore } from './syncService.js';
+
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
 let incomeChart = null;
@@ -91,6 +94,8 @@ function getDefaultData() {
 
 function saveData(data) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    // Fire-and-forget save (errors will show in console)
+    saveToFirestore(data).catch(() => {});
 }
 
 function getCurrentMonthData(data) {
@@ -536,7 +541,6 @@ function renderColorSettings(data) {
 }
 
 function setupEventListeners() {
-    const data = loadData();
 
     document.getElementById('monthSelector').addEventListener('change', (e) => {
         currentMonth = parseInt(e.target.value);
@@ -813,19 +817,156 @@ function renderAll(data) {
     updateOverview(data);
 }
 
-function init() {
-    const data = loadData();
+function createLoginOverlay() {
+    const overlay = document.createElement('div');
+    overlay.id = 'loginOverlay';
+    overlay.style.position = 'fixed';
+    overlay.style.inset = '0';
+    overlay.style.background = 'rgba(0,0,0,0.55)';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.zIndex = '9999';
 
+    const card = document.createElement('div');
+    card.style.width = 'min(420px, 92vw)';
+    card.style.background = '#fff';
+    card.style.borderRadius = '14px';
+    card.style.padding = '18px';
+    card.style.boxShadow = '0 12px 40px rgba(0,0,0,0.25)';
+    card.style.fontFamily = 'system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif';
+
+    const title = document.createElement('div');
+    title.textContent = 'Login';
+    title.style.fontSize = '20px';
+    title.style.fontWeight = '700';
+    title.style.marginBottom = '10px';
+
+    const note = document.createElement('div');
+    note.textContent = 'Use your Firebase email + password. This unlocks shared real-time syncing.';
+    note.style.fontSize = '13px';
+    note.style.opacity = '0.75';
+    note.style.marginBottom = '14px';
+
+    const form = document.createElement('form');
+
+    const email = document.createElement('input');
+    email.type = 'email';
+    email.placeholder = 'Email';
+    email.required = true;
+    email.autocomplete = 'username';
+    email.style.width = '100%';
+    email.style.padding = '10px 12px';
+    email.style.border = '1px solid #ddd';
+    email.style.borderRadius = '10px';
+    email.style.marginBottom = '10px';
+
+    const pass = document.createElement('input');
+    pass.type = 'password';
+    pass.placeholder = 'Password';
+    pass.required = true;
+    pass.autocomplete = 'current-password';
+    pass.style.width = '100%';
+    pass.style.padding = '10px 12px';
+    pass.style.border = '1px solid #ddd';
+    pass.style.borderRadius = '10px';
+    pass.style.marginBottom = '12px';
+
+    const err = document.createElement('div');
+    err.id = 'loginError';
+    err.style.color = '#b00020';
+    err.style.fontSize = '13px';
+    err.style.minHeight = '18px';
+    err.style.marginBottom = '10px';
+
+    const btn = document.createElement('button');
+    btn.type = 'submit';
+    btn.textContent = 'Sign in';
+    btn.style.width = '100%';
+    btn.style.padding = '10px 12px';
+    btn.style.border = '0';
+    btn.style.borderRadius = '10px';
+    btn.style.background = '#111827';
+    btn.style.color = '#fff';
+    btn.style.fontWeight = '700';
+    btn.style.cursor = 'pointer';
+
+    form.appendChild(email);
+    form.appendChild(pass);
+    form.appendChild(err);
+    form.appendChild(btn);
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        err.textContent = '';
+        btn.disabled = true;
+        btn.textContent = 'Signing in...';
+        try {
+            await signInWithEmailAndPassword(auth, email.value.trim(), pass.value);
+        } catch (e2) {
+            err.textContent = (e2 && e2.message) ? e2.message : 'Login failed';
+            btn.disabled = false;
+            btn.textContent = 'Sign in';
+        }
+    });
+
+    card.appendChild(title);
+    card.appendChild(note);
+    card.appendChild(form);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+
+    return overlay;
+}
+
+async function bootstrapAfterAuth() {
+    // 1) Load Firestore -> if empty, push local -> else overwrite local
+    try {
+        const remote = await loadFromFirestore();
+        if (remote) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(remote));
+        } else {
+            // first run: seed Firestore with whatever local has
+            const local = loadData();
+            await saveToFirestore(local);
+        }
+    } catch (e) {
+        // If Firestore read fails (rules / network), still let app run locally
+        console.warn('Firestore not available yet; running with localStorage only.', e);
+    }
+
+    // 2) Render from local
+    const data = loadData();
     initializeYearSelector();
 
     const monthSelector = document.getElementById('monthSelector');
     monthSelector.value = currentMonth;
 
     applyTheme(data.theme || 'light');
-
     renderAll(data);
-
     setupEventListeners();
+
+    // 3) Subscribe for real-time updates
+    try {
+        subscribeToFirestore((updatedData) => {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedData));
+            renderAll(updatedData);
+        });
+    } catch (e) {
+        console.warn('Firestore subscribe failed:', e);
+    }
+}
+
+function init() {
+    const overlay = createLoginOverlay();
+
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            // logged in
+            if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+            bootstrapAfterAuth();
+        }
+    });
 }
 
 document.addEventListener('DOMContentLoaded', init);
