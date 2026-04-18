@@ -244,381 +244,244 @@ function parseNumber(value) {
 }
 
 function renderIncomeTable(data) {
-    const monthData = getCurrentMonthData(data);
-    const tbody = document.getElementById('incomeTableBody');
-    tbody.innerHTML = '';
-
-    monthData.income.forEach((item, index) => {
-        const row = document.createElement('tr');
-        const estimated = parseNumber(item.estimated);
-        const actual = parseNumber(item.actual);
-        const diff = actual - estimated;
-
-        row.innerHTML = `
-            <td>${index + 1}</td>
-            <td><input type="text" value="${item.description}" data-id="${item.id}" data-field="description" data-type="income"></td>
-            <td><input type="number" step="0.01" value="${estimated}" data-id="${item.id}" data-field="estimated" data-type="income"></td>
-            <td><input type="number" step="0.01" value="${actual}" data-id="${item.id}" data-field="actual" data-type="income"></td>
-            <td class="${diff >= 0 ? 'positive' : 'negative'}">${formatCurrency(diff)}</td>
-            <td><button class="delete-btn" data-id="${item.id}" data-type="income">🗑️</button></td>
-        `;
-        tbody.appendChild(row);
-    });
-
-    updateTotals(data);
+    try {
+        const monthData = getCurrentMonthData(data);
+        const tbody = document.getElementById('incomeTableBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        monthData.income.forEach((item, index) => {
+            const row = document.createElement('tr');
+            const estimated = parseNumber(item.estimated);
+            const actual = parseNumber(item.actual);
+            const diff = actual - estimated;
+            row.innerHTML = `
+                <td>${index + 1}</td>
+                <td><input type="text" value="${item.description}" data-id="${item.id}" data-field="description" data-type="income"></td>
+                <td><input type="number" step="0.01" value="${estimated}" data-id="${item.id}" data-field="estimated" data-type="income"></td>
+                <td><input type="number" step="0.01" value="${actual}" data-id="${item.id}" data-field="actual" data-type="income"></td>
+                <td class="${diff >= 0 ? 'positive' : 'negative'}">${formatCurrency(diff)}</td>
+                <td><button class="delete-btn" data-id="${item.id}" data-type="income">🗑️</button></td>
+            `;
+            tbody.appendChild(row);
+        });
+        updateTotals(data);
+    } catch(e) { console.warn('[renderIncomeTable] error:', e.message); }
 }
 
 function renderExpenseTable(data) {
-    const monthData = getCurrentMonthData(data);
-    const tbody = document.getElementById('expenseTableBody');
-    tbody.innerHTML = '';
-
-    monthData.expenses.forEach((item, index) => {
-        const row = document.createElement('tr');
-        const estimated = parseNumber(item.estimated);
-        const actual = parseNumber(item.actual);
-        const diff = actual - estimated;
-
-        row.innerHTML = `
-            <td>${index + 1}</td>
-            <td><input type="text" value="${item.description}" data-id="${item.id}" data-field="description" data-type="expense"></td>
-            <td><input type="number" step="0.01" value="${estimated}" data-id="${item.id}" data-field="estimated" data-type="expense"></td>
-            <td><input type="number" step="0.01" value="${actual}" data-id="${item.id}" data-field="actual" data-type="expense"></td>
-            <td class="${diff <= 0 ? 'positive' : 'negative'}">${formatCurrency(diff)}</td>
-            <td><button class="delete-btn" data-id="${item.id}" data-type="expense">🗑️</button></td>
-        `;
-        tbody.appendChild(row);
-    });
-
-    updateTotals(data);
+    try {
+        const monthData = getCurrentMonthData(data);
+        const tbody = document.getElementById('expenseTableBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        monthData.expenses.forEach((item, index) => {
+            const row = document.createElement('tr');
+            const estimated = parseNumber(item.estimated);
+            const actual = parseNumber(item.actual);
+            const diff = actual - estimated;
+            row.innerHTML = `
+                <td>${index + 1}</td>
+                <td><input type="text" value="${item.description}" data-id="${item.id}" data-field="description" data-type="expense"></td>
+                <td><input type="number" step="0.01" value="${estimated}" data-id="${item.id}" data-field="estimated" data-type="expense"></td>
+                <td><input type="number" step="0.01" value="${actual}" data-id="${item.id}" data-field="actual" data-type="expense"></td>
+                <td class="${diff <= 0 ? 'positive' : 'negative'}">${formatCurrency(diff)}</td>
+                <td><button class="delete-btn" data-id="${item.id}" data-type="expense">🗑️</button></td>
+            `;
+            tbody.appendChild(row);
+        });
+        updateTotals(data);
+    } catch(e) { console.warn('[renderExpenseTable] error:', e.message); }
 }
 
 function updateTotals(data) {
-    const monthData = getCurrentMonthData(data);
-
-    const incomeEstTotal = monthData.income.reduce((sum, item) => sum + parseNumber(item.estimated), 0);
-    const incomeActTotal = monthData.income.reduce((sum, item) => sum + parseNumber(item.actual), 0);
-    const incomeDiffTotal = incomeActTotal - incomeEstTotal;
-
-    const expenseEstTotal = monthData.expenses.reduce((sum, item) => sum + parseNumber(item.estimated), 0);
-    const expenseActTotal = monthData.expenses.reduce((sum, item) => sum + parseNumber(item.actual), 0);
-    const expenseDiffTotal = expenseActTotal - expenseEstTotal;
-
-    document.getElementById('totalIncomeEst').textContent = formatCurrency(incomeEstTotal);
-    document.getElementById('totalIncomeAct').textContent = formatCurrency(incomeActTotal);
-    document.getElementById('totalIncomeDiff').textContent = formatCurrency(incomeDiffTotal);
-    document.getElementById('totalIncomeDiff').className = incomeDiffTotal >= 0 ? 'positive' : 'negative';
-
-    document.getElementById('totalExpenseEst').textContent = formatCurrency(expenseEstTotal);
-    document.getElementById('totalExpenseAct').textContent = formatCurrency(expenseActTotal);
-    document.getElementById('totalExpenseDiff').textContent = formatCurrency(expenseDiffTotal);
-    document.getElementById('totalExpenseDiff').className = expenseDiffTotal <= 0 ? 'positive' : 'negative';
-
-    updateOverview(data);
+    try {
+        const monthData = getCurrentMonthData(data);
+        const incomeEstTotal  = monthData.income.reduce((s, i) => s + parseNumber(i.estimated), 0);
+        const incomeActTotal  = monthData.income.reduce((s, i) => s + parseNumber(i.actual), 0);
+        const incomeDiffTotal = incomeActTotal - incomeEstTotal;
+        const expenseEstTotal  = monthData.expenses.reduce((s, i) => s + parseNumber(i.estimated), 0);
+        const expenseActTotal  = monthData.expenses.reduce((s, i) => s + parseNumber(i.actual), 0);
+        const expenseDiffTotal = expenseActTotal - expenseEstTotal;
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+        const cls = (id, c) => { const el = document.getElementById(id); if (el) el.className = c; };
+        set('totalIncomeEst',   formatCurrency(incomeEstTotal));
+        set('totalIncomeAct',   formatCurrency(incomeActTotal));
+        set('totalIncomeDiff',  formatCurrency(incomeDiffTotal));
+        cls('totalIncomeDiff',  incomeDiffTotal >= 0 ? 'positive' : 'negative');
+        set('totalExpenseEst',  formatCurrency(expenseEstTotal));
+        set('totalExpenseAct',  formatCurrency(expenseActTotal));
+        set('totalExpenseDiff', formatCurrency(expenseDiffTotal));
+        cls('totalExpenseDiff', expenseDiffTotal <= 0 ? 'positive' : 'negative');
+        updateOverview(data);
+    } catch(e) { console.warn('[updateTotals] error:', e.message); }
 }
 
 function updateOverview(data) {
-    const monthData = getCurrentMonthData(data);
+    try {
+        const monthData = getCurrentMonthData(data);
 
-    const incomeEstTotal = monthData.income.reduce((sum, item) => sum + parseNumber(item.estimated), 0);
-    const incomeActTotal = monthData.income.reduce((sum, item) => sum + parseNumber(item.actual), 0);
-    const incomeDiffTotal = incomeActTotal - incomeEstTotal;
+        const incomeEstTotal = monthData.income.reduce((sum, item) => sum + parseNumber(item.estimated), 0);
+        const incomeActTotal = monthData.income.reduce((sum, item) => sum + parseNumber(item.actual), 0);
+        const incomeDiffTotal = incomeActTotal - incomeEstTotal;
 
-    const expenseEstTotal = monthData.expenses.reduce((sum, item) => sum + parseNumber(item.estimated), 0);
-    const expenseActTotal = monthData.expenses.reduce((sum, item) => sum + parseNumber(item.actual), 0);
-    const expenseDiffTotal = expenseActTotal - expenseEstTotal;
+        const expenseEstTotal = monthData.expenses.reduce((sum, item) => sum + parseNumber(item.estimated), 0);
+        const expenseActTotal = monthData.expenses.reduce((sum, item) => sum + parseNumber(item.actual), 0);
+        const expenseDiffTotal = expenseActTotal - expenseEstTotal;
 
-    const savingsEst = incomeEstTotal - expenseEstTotal;
-    const savingsAct = incomeActTotal - expenseActTotal;
-    const savingsDiff = savingsAct - savingsEst;
+        const savingsEst = incomeEstTotal - expenseEstTotal;
+        const savingsAct = incomeActTotal - expenseActTotal;
 
-    // Pull actual savings balance from Savings & Goals input if available
-    const savTotalEl = document.getElementById('sav-total');
-    const realSavingsAct = savTotalEl ? (parseFloat(savTotalEl.value) || savingsAct) : savingsAct;
+        // Pull actual savings balance from Savings & Goals input if available
+        const savTotalEl = document.getElementById('sav-total');
+        const realSavingsAct = savTotalEl && savTotalEl.value !== '' ? (parseFloat(savTotalEl.value) || savingsAct) : savingsAct;
 
-    document.getElementById('overviewIncomeEst').textContent = formatCurrency(incomeEstTotal);
-    document.getElementById('overviewIncomeAct').textContent = formatCurrency(incomeActTotal);
-    document.getElementById('overviewIncomeDiff').textContent = formatCurrency(incomeDiffTotal);
-    document.getElementById('overviewIncomeDiff').className = 'metric-value ' + (incomeDiffTotal >= 0 ? 'positive' : 'negative');
+        const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+        const cls = (id, c)   => { const el = document.getElementById(id); if (el) el.className = c; };
 
-    document.getElementById('overviewExpensesEst').textContent = formatCurrency(expenseEstTotal);
-    document.getElementById('overviewExpensesAct').textContent = formatCurrency(expenseActTotal);
-    document.getElementById('overviewExpensesDiff').textContent = formatCurrency(expenseDiffTotal);
-    document.getElementById('overviewExpensesDiff').className = 'metric-value ' + (expenseDiffTotal <= 0 ? 'positive' : 'negative');
+        set('overviewIncomeEst',    formatCurrency(incomeEstTotal));
+        set('overviewIncomeAct',    formatCurrency(incomeActTotal));
+        set('overviewIncomeDiff',   formatCurrency(incomeDiffTotal));
+        cls('overviewIncomeDiff',   'metric-value ' + (incomeDiffTotal >= 0 ? 'positive' : 'negative'));
 
-    document.getElementById('overviewSavingsEst').textContent = formatCurrency(savingsEst);
-    document.getElementById('overviewSavingsAct').textContent = formatCurrency(realSavingsAct);
-    document.getElementById('overviewSavingsDiff').textContent = formatCurrency(realSavingsAct - savingsEst);
-    document.getElementById('overviewSavingsDiff').className = 'metric-value ' + ((realSavingsAct - savingsEst) >= 0 ? 'positive' : 'negative');
+        set('overviewExpensesEst',  formatCurrency(expenseEstTotal));
+        set('overviewExpensesAct',  formatCurrency(expenseActTotal));
+        set('overviewExpensesDiff', formatCurrency(expenseDiffTotal));
+        cls('overviewExpensesDiff', 'metric-value ' + (expenseDiffTotal <= 0 ? 'positive' : 'negative'));
 
-    const savingsRateEst = incomeEstTotal > 0 ? (savingsEst / incomeEstTotal * 100) : 0;
-    const savingsRateAct = incomeActTotal > 0 ? (realSavingsAct / incomeActTotal * 100) : 0;
+        set('overviewSavingsEst',   formatCurrency(savingsEst));
+        set('overviewSavingsAct',   formatCurrency(realSavingsAct));
+        set('overviewSavingsDiff',  formatCurrency(realSavingsAct - savingsEst));
+        cls('overviewSavingsDiff',  'metric-value ' + ((realSavingsAct - savingsEst) >= 0 ? 'positive' : 'negative'));
 
-    document.getElementById('savingsRateEst').textContent = savingsRateEst.toFixed(1) + '%';
-    document.getElementById('savingsRateAct').textContent = savingsRateAct.toFixed(1) + '%';
+        const savingsRateEst = incomeEstTotal > 0 ? (savingsEst / incomeEstTotal * 100) : 0;
+        const savingsRateAct = incomeActTotal > 0 ? (realSavingsAct / incomeActTotal * 100) : 0;
 
-    const badge = document.getElementById('savingsHealthBadge');
-    badge.className = 'badge';
-    if (savingsRateAct >= 20) {
-        badge.textContent = 'Good';
-        badge.classList.add('good');
-    } else if (savingsRateAct >= 10) {
-        badge.textContent = 'Watch';
-        badge.classList.add('watch');
-    } else {
-        badge.textContent = 'Risk';
-        badge.classList.add('risk');
-    }
+        set('savingsRateEst', savingsRateEst.toFixed(1) + '%');
+        set('savingsRateAct', savingsRateAct.toFixed(1) + '%');
+
+        const badge = document.getElementById('savingsHealthBadge');
+        if (badge) {
+            badge.className = 'badge';
+            if (savingsRateAct >= 20)     { badge.textContent = 'Good';  badge.classList.add('good'); }
+            else if (savingsRateAct >= 10){ badge.textContent = 'Watch'; badge.classList.add('watch'); }
+            else                          { badge.textContent = 'Risk';  badge.classList.add('risk'); }
+        }
+    } catch(e) { console.warn('[updateOverview] error:', e.message); }
 }
 
 function renderIncomeChart(data, type = 'actual') {
-    const monthData = getCurrentMonthData(data);
-    const canvas = document.getElementById('incomeChart');
-    const ctx = canvas.getContext('2d');
-
-    if (incomeChart) {
-        incomeChart.destroy();
-    }
-
-    const labels = monthData.income.map(item => item.description || 'Unnamed');
-    const values = monthData.income.map(item => parseNumber(item[type]));
-    const colors = monthData.incomeColors;
-
-    const total = values.reduce((sum, val) => sum + val, 0);
-
-    incomeChart = new Chart(ctx, {
-        type: 'pie',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: values,
-                backgroundColor: colors,
-                borderWidth: 2,
-                borderColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-secondary')
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary'),
-                        padding: 10,
-                        font: {
-                            size: 11
-                        }
-                    }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const value = context.parsed;
-                            const percentage = total > 0 ? (value / total * 100).toFixed(1) : 0;
-                            return `${context.label}: ${formatCurrency(value)} (${percentage}%)`;
-                        }
-                    }
-                }
-            }
-        }
-    });
+    try {
+        const monthData = getCurrentMonthData(data);
+        const canvas = document.getElementById('incomeChart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (incomeChart) incomeChart.destroy();
+        const labels = monthData.income.map(item => item.description || 'Unnamed');
+        const values = monthData.income.map(item => parseNumber(item[type]));
+        const colors = monthData.incomeColors;
+        const total  = values.reduce((s, v) => s + v, 0);
+        incomeChart = new Chart(ctx, {
+            type: 'pie',
+            data: { labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 2, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-secondary') }] },
+            options: { responsive: true, maintainAspectRatio: true, plugins: {
+                legend: { position: 'bottom', labels: { color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary'), padding: 10, font: { size: 11 } } },
+                tooltip: { callbacks: { label: ctx => `${ctx.label}: ${formatCurrency(ctx.parsed)} (${total > 0 ? (ctx.parsed/total*100).toFixed(1) : 0}%)` } }
+            }}
+        });
+    } catch(e) { console.warn('[renderIncomeChart] error:', e.message); }
 }
 
 function renderExpenseChart(data, type = 'actual') {
-    const monthData = getCurrentMonthData(data);
-    const canvas = document.getElementById('expenseChart');
-    const ctx = canvas.getContext('2d');
-
-    if (expenseChart) {
-        expenseChart.destroy();
-    }
-
-    const labels = monthData.expenses.map(item => item.description || 'Unnamed');
-    const values = monthData.expenses.map(item => parseNumber(item[type]));
-    const colors = monthData.expenseColors;
-
-    const total = values.reduce((sum, val) => sum + val, 0);
-
-    expenseChart = new Chart(ctx, {
-        type: 'pie',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: values,
-                backgroundColor: colors,
-                borderWidth: 2,
-                borderColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-secondary')
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary'),
-                        padding: 10,
-                        font: {
-                            size: 11
-                        }
-                    }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const value = context.parsed;
-                            const percentage = total > 0 ? (value / total * 100).toFixed(1) : 0;
-                            return `${context.label}: ${formatCurrency(value)} (${percentage}%)`;
-                        }
-                    }
-                }
-            }
-        }
-    });
+    try {
+        const monthData = getCurrentMonthData(data);
+        const canvas = document.getElementById('expenseChart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (expenseChart) expenseChart.destroy();
+        const labels = monthData.expenses.map(item => item.description || 'Unnamed');
+        const values = monthData.expenses.map(item => parseNumber(item[type]));
+        const colors = monthData.expenseColors;
+        const total  = values.reduce((s, v) => s + v, 0);
+        expenseChart = new Chart(ctx, {
+            type: 'pie',
+            data: { labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 2, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-secondary') }] },
+            options: { responsive: true, maintainAspectRatio: true, plugins: {
+                legend: { position: 'bottom', labels: { color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary'), padding: 10, font: { size: 11 } } },
+                tooltip: { callbacks: { label: ctx => `${ctx.label}: ${formatCurrency(ctx.parsed)} (${total > 0 ? (ctx.parsed/total*100).toFixed(1) : 0}%)` } }
+            }}
+        });
+    } catch(e) { console.warn('[renderExpenseChart] error:', e.message); }
 }
 
 function renderYearSummary(data) {
-    const tbody = document.getElementById('summaryTableBody');
-    tbody.innerHTML = '';
-
-    if (!data.years[currentYear]) {
-        data.years[currentYear] = {};
-    }
-
-    for (let m = 0; m < 12; m++) {
-        const monthData = data.years[currentYear][m] || { income: [], expenses: [] };
-
-        const incomeEst = monthData.income.reduce((sum, item) => sum + parseNumber(item.estimated), 0);
-        const incomeAct = monthData.income.reduce((sum, item) => sum + parseNumber(item.actual), 0);
-        const incomeDiff = incomeAct - incomeEst;
-
-        const expenseEst = monthData.expenses.reduce((sum, item) => sum + parseNumber(item.estimated), 0);
-        const expenseAct = monthData.expenses.reduce((sum, item) => sum + parseNumber(item.actual), 0);
-        const expenseDiff = expenseAct - expenseEst;
-
-        const savingsEst = incomeEst - expenseEst;
-        const savingsAct = incomeAct - expenseAct;
-        const savingsDiff = savingsAct - savingsEst;
-
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td><strong>${MONTHS[m]}</strong></td>
-            <td>${formatCurrency(incomeEst)}</td>
-            <td>${formatCurrency(incomeAct)}</td>
-            <td class="${incomeDiff >= 0 ? 'positive' : 'negative'}">${formatCurrency(incomeDiff)}</td>
-            <td>${formatCurrency(expenseEst)}</td>
-            <td>${formatCurrency(expenseAct)}</td>
-            <td class="${expenseDiff <= 0 ? 'positive' : 'negative'}">${formatCurrency(expenseDiff)}</td>
-            <td>${formatCurrency(savingsEst)}</td>
-            <td>${formatCurrency(savingsAct)}</td>
-            <td class="${savingsDiff >= 0 ? 'positive' : 'negative'}">${formatCurrency(savingsDiff)}</td>
-        `;
-        tbody.appendChild(row);
-    }
-
-    renderYearChart(data);
+    try {
+        const tbody = document.getElementById('summaryTableBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        if (!data.years[currentYear]) data.years[currentYear] = {};
+        for (let m = 0; m < 12; m++) {
+            const monthData = data.years[currentYear][m] || { income: [], expenses: [] };
+            const incomeEst  = monthData.income.reduce((s, i) => s + parseNumber(i.estimated), 0);
+            const incomeAct  = monthData.income.reduce((s, i) => s + parseNumber(i.actual), 0);
+            const incomeDiff = incomeAct - incomeEst;
+            const expenseEst  = monthData.expenses.reduce((s, i) => s + parseNumber(i.estimated), 0);
+            const expenseAct  = monthData.expenses.reduce((s, i) => s + parseNumber(i.actual), 0);
+            const expenseDiff = expenseAct - expenseEst;
+            const savingsEst  = incomeEst - expenseEst;
+            const savingsAct  = incomeAct - expenseAct;
+            const savingsDiff = savingsAct - savingsEst;
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><strong>${MONTHS[m]}</strong></td>
+                <td>${formatCurrency(incomeEst)}</td><td>${formatCurrency(incomeAct)}</td>
+                <td class="${incomeDiff >= 0 ? 'positive' : 'negative'}">${formatCurrency(incomeDiff)}</td>
+                <td>${formatCurrency(expenseEst)}</td><td>${formatCurrency(expenseAct)}</td>
+                <td class="${expenseDiff <= 0 ? 'positive' : 'negative'}">${formatCurrency(expenseDiff)}</td>
+                <td>${formatCurrency(savingsEst)}</td><td>${formatCurrency(savingsAct)}</td>
+                <td class="${savingsDiff >= 0 ? 'positive' : 'negative'}">${formatCurrency(savingsDiff)}</td>
+            `;
+            tbody.appendChild(row);
+        }
+        renderYearChart(data);
+    } catch(e) { console.warn('[renderYearSummary] error:', e.message); }
 }
 
 function renderYearChart(data) {
-    const canvas = document.getElementById('yearChart');
-    const ctx = canvas.getContext('2d');
-
-    if (yearChart) {
-        yearChart.destroy();
-    }
-
-    if (!data.years[currentYear]) {
-        data.years[currentYear] = {};
-    }
-
-    const estimatedSavings = [];
-    const actualSavings = [];
-
-    for (let m = 0; m < 12; m++) {
-        const monthData = data.years[currentYear][m] || { income: [], expenses: [] };
-
-        const incomeEst = monthData.income.reduce((sum, item) => sum + parseNumber(item.estimated), 0);
-        const incomeAct = monthData.income.reduce((sum, item) => sum + parseNumber(item.actual), 0);
-        const expenseEst = monthData.expenses.reduce((sum, item) => sum + parseNumber(item.estimated), 0);
-        const expenseAct = monthData.expenses.reduce((sum, item) => sum + parseNumber(item.actual), 0);
-
-        estimatedSavings.push(incomeEst - expenseEst);
-        actualSavings.push(incomeAct - expenseAct);
-    }
-
-    yearChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: MONTHS,
-            datasets: [
-                {
-                    label: 'Estimated Savings',
-                    data: estimatedSavings,
-                    borderColor: '#8b5cf6',
-                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                    borderWidth: 2,
-                    tension: 0.3,
-                    fill: true
+    try {
+        const canvas = document.getElementById('yearChart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (yearChart) yearChart.destroy();
+        if (!data.years[currentYear]) data.years[currentYear] = {};
+        const estimatedSavings = [], actualSavings = [];
+        for (let m = 0; m < 12; m++) {
+            const md = data.years[currentYear][m] || { income: [], expenses: [] };
+            const iE = md.income.reduce((s,i)=>s+parseNumber(i.estimated),0);
+            const iA = md.income.reduce((s,i)=>s+parseNumber(i.actual),0);
+            const eE = md.expenses.reduce((s,i)=>s+parseNumber(i.estimated),0);
+            const eA = md.expenses.reduce((s,i)=>s+parseNumber(i.actual),0);
+            estimatedSavings.push(iE - eE);
+            actualSavings.push(iA - eA);
+        }
+        yearChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: MONTHS, datasets: [
+                { label: 'Estimated Savings', data: estimatedSavings, borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.1)', borderWidth: 2, tension: 0.3, fill: true },
+                { label: 'Actual Savings',    data: actualSavings,    borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)',  borderWidth: 2, tension: 0.3, fill: true }
+            ]},
+            options: {
+                responsive: true, maintainAspectRatio: true,
+                plugins: {
+                    legend: { position: 'top', labels: { color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary'), padding: 15, font: { size: 12 } } },
+                    tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}` } }
                 },
-                {
-                    label: 'Actual Savings',
-                    data: actualSavings,
-                    borderColor: '#3b82f6',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    borderWidth: 2,
-                    tension: 0.3,
-                    fill: true
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: {
-                    position: 'top',
-                    labels: {
-                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary'),
-                        padding: 15,
-                        font: {
-                            size: 12
-                        }
-                    }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`;
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary'),
-                        callback: function(value) {
-                            return formatCurrency(value);
-                        }
-                    },
-                    grid: {
-                        color: getComputedStyle(document.documentElement).getPropertyValue('--border-color')
-                    }
-                },
-                x: {
-                    ticks: {
-                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary')
-                    },
-                    grid: {
-                        color: getComputedStyle(document.documentElement).getPropertyValue('--border-color')
-                    }
+                scales: {
+                    y: { beginAtZero: true, ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary'), callback: v => formatCurrency(v) }, grid: { color: getComputedStyle(document.documentElement).getPropertyValue('--border-color') } },
+                    x: { ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary') }, grid: { color: getComputedStyle(document.documentElement).getPropertyValue('--border-color') } }
                 }
             }
-        }
-    });
+        });
+    } catch(e) { console.warn('[renderYearChart] error:', e.message); }
 }
 
 function initializeYearSelector() {
