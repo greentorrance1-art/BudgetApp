@@ -866,6 +866,33 @@ function setupEventListeners() {
         renderExpenseChart(data, getCurrentChartType('expense'));
     });
 
+    // ── Paycheck Autopilot
+    document.getElementById('paycheckInput').addEventListener('input', () => {
+        renderAutopilot();
+    });
+
+    // ── Car Loan
+    document.getElementById('calcLoanBtn').addEventListener('click', renderLoanCalc);
+    ['loanBalance','loanAPR','loanPayment','loanExtra','loanMonths'].forEach(id => {
+        document.getElementById(id).addEventListener('input', renderLoanCalc);
+    });
+
+    // ── Savings
+    ['sav-total','sav-travel-amt','sav-biz-amt','sav-overflow-amt',
+     'trip-flight','trip-food','trip-buffer','proj-monthly-add'].forEach(id => {
+        document.getElementById(id).addEventListener('input', renderSavings);
+    });
+
+    document.getElementById('saveSavingsBtn').addEventListener('click', async () => {
+        const data = await loadData();
+        saveSavingsData(data);
+        await saveData(data);
+        renderSavings();
+        const btn = document.getElementById('saveSavingsBtn');
+        btn.textContent = '✅ Saved!';
+        setTimeout(() => { btn.textContent = '💾 Save Balances'; }, 1500);
+    });
+
     document.getElementById('exportDataBtn').addEventListener('click', async () => {
         const data = await loadData();
         const dataStr = JSON.stringify(data, null, 2);
@@ -961,6 +988,244 @@ function applyTheme(theme) {
     }
 }
 
+// ─── PAYCHECK AUTOPILOT ───────────────────────────────────────────────────────
+function calcAutopilot(amount) {
+    const FIXED_MONTHLY = 1581;
+    const halfFixed = FIXED_MONTHLY / 2;
+    let carExtra, savings, travel, life, business;
+
+    if (amount < 1300) {
+        carExtra = 50; savings = 0; travel = 0; life = 200; business = 0;
+    } else if (amount < 1650) {
+        carExtra = 150; savings = 75; travel = 100; life = 300; business = 100;
+    } else {
+        carExtra = 300; savings = 150; travel = 200; life = 400; business = 200;
+    }
+
+    const allocated = halfFixed + carExtra + savings + travel + life + business;
+    const overflow = Math.max(0, amount - allocated);
+
+    return { halfFixed, carExtra, savings, travel, life, business, overflow, total: allocated + overflow };
+}
+
+function renderAutopilot() {
+    const input = parseFloat(document.getElementById('paycheckInput').value) || 0;
+    const alloc = calcAutopilot(input);
+
+    const badge = document.getElementById('scenarioBadge');
+    if (input < 1300) {
+        badge.textContent = '🔴 LOW — Protect Cash';
+        badge.className = 'scenario-badge low';
+    } else if (input < 1650) {
+        badge.textContent = '🟡 NORMAL — Balanced';
+        badge.className = 'scenario-badge normal';
+    } else {
+        badge.textContent = '🟢 HIGH — Attack Debt';
+        badge.className = 'scenario-badge high';
+    }
+
+    document.getElementById('ap-bills').textContent = formatCurrency(alloc.halfFixed);
+    document.getElementById('ap-carextra').textContent = formatCurrency(alloc.carExtra);
+    document.getElementById('ap-savings').textContent = formatCurrency(alloc.savings);
+    document.getElementById('ap-travel').textContent = formatCurrency(alloc.travel);
+    document.getElementById('ap-life').textContent = formatCurrency(alloc.life);
+    document.getElementById('ap-business').textContent = formatCurrency(alloc.business);
+    document.getElementById('ap-overflow').textContent = formatCurrency(alloc.overflow);
+    document.getElementById('ap-total').innerHTML = '<strong>' + formatCurrency(alloc.total) + '</strong>';
+}
+
+function renderAutopilotStats(data) {
+    let allChecks = [];
+    if (data && data.years) {
+        Object.values(data.years).forEach(yr => {
+            Object.values(yr).forEach(mo => {
+                if (mo.income) {
+                    mo.income.forEach(item => {
+                        if (item.actual > 0) allChecks.push(item.actual);
+                    });
+                }
+            });
+        });
+    }
+    const avg = allChecks.length ? allChecks.reduce((a,b)=>a+b,0)/allChecks.length : 1413.38;
+    document.getElementById('apAvgCheck').textContent = formatCurrency(avg);
+    document.getElementById('apAvgMonthly').textContent = formatCurrency(avg * 2);
+}
+
+// ─── CAR LOAN ─────────────────────────────────────────────────────────────────
+function nper(rate, pmt, pv) {
+    if (rate === 0) return pv / pmt;
+    return -Math.log(1 - (rate * pv) / pmt) / Math.log(1 + rate);
+}
+
+function pmt(rate, nPer, pv) {
+    if (rate === 0) return pv / nPer;
+    return (rate * pv) / (1 - Math.pow(1 + rate, -nPer));
+}
+
+function renderLoanCalc() {
+    const balance  = parseFloat(document.getElementById('loanBalance').value)  || 21800;
+    const apr      = parseFloat(document.getElementById('loanAPR').value)       || 18.35;
+    const base     = parseFloat(document.getElementById('loanPayment').value)   || 513.46;
+    const extra    = parseFloat(document.getElementById('loanExtra').value)     || 200;
+    const months   = parseInt(document.getElementById('loanMonths').value)      || 72;
+
+    const rate = apr / 100 / 12;
+    const totalPayment = base + extra;
+
+    const payoffMin   = nper(rate, base, balance);
+    const payoffExtra = nper(rate, totalPayment, balance);
+    const payoffYrs   = payoffExtra / 12;
+
+    const interestMin   = Math.max(0, base * payoffMin - balance);
+    const interestExtra = Math.max(0, totalPayment * payoffExtra - balance);
+    const interestSaved = interestMin - interestExtra;
+
+    document.getElementById('lr-totalPayment').textContent  = formatCurrency(totalPayment);
+    document.getElementById('lr-payoffMin').textContent     = payoffMin.toFixed(1) + ' mo';
+    document.getElementById('lr-payoffExtra').textContent   = payoffExtra.toFixed(1) + ' mo';
+    document.getElementById('lr-payoffYears').textContent   = payoffYrs.toFixed(1) + ' yrs';
+    document.getElementById('lr-interestMin').textContent   = formatCurrency(interestMin);
+    document.getElementById('lr-interestExtra').textContent = formatCurrency(interestExtra);
+    document.getElementById('lr-interestSaved').textContent = formatCurrency(interestSaved);
+
+    // Refinance sim (60 months)
+    const refiBalance = balance;
+    const curPmt  = pmt(rate, 60, refiBalance);
+    const newRate = 0.08 / 12;
+    const newPmt  = pmt(newRate, 60, refiBalance);
+    const curInt  = curPmt * 60 - refiBalance;
+    const newInt  = newPmt * 60 - refiBalance;
+
+    document.getElementById('refi-curPayment').textContent    = formatCurrency(curPmt);
+    document.getElementById('refi-newPayment').textContent    = formatCurrency(newPmt);
+    document.getElementById('refi-curInterest').textContent   = formatCurrency(curInt);
+    document.getElementById('refi-newInterest').textContent   = formatCurrency(newInt);
+    document.getElementById('refi-monthlySavings').textContent = formatCurrency(curPmt - newPmt);
+    document.getElementById('refi-totalSavings').textContent  = formatCurrency(curInt - newInt);
+
+    // Amortization
+    const tbody = document.getElementById('amortBody');
+    tbody.innerHTML = '';
+    let bal = balance;
+    for (let mo = 1; mo <= 12; mo++) {
+        const interest   = bal * rate;
+        const principal  = Math.min(bal, totalPayment - interest);
+        bal = Math.max(0, bal - principal);
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>Month ${mo}</td>
+            <td>${formatCurrency(base)}</td>
+            <td class="positive">${formatCurrency(extra)}</td>
+            <td class="negative">${formatCurrency(interest)}</td>
+            <td class="positive">${formatCurrency(principal)}</td>
+            <td><strong>${formatCurrency(bal)}</strong></td>
+        `;
+        tbody.appendChild(row);
+    }
+}
+
+// ─── SAVINGS & GOALS ──────────────────────────────────────────────────────────
+function renderSavings() {
+    const total    = parseFloat(document.getElementById('sav-total').value)        || 2100;
+    const travelAmt = parseFloat(document.getElementById('sav-travel-amt').value) || 300;
+    const bizAmt   = parseFloat(document.getElementById('sav-biz-amt').value)     || 0;
+    const FLOOR    = 1000;
+    const TRAVEL_GOAL = 700;
+    const BIZ_GOAL = 500;
+
+    document.getElementById('sav-total-status').textContent  = total >= FLOOR ? '✅ Above Floor' : '🚨 DANGER — Below Floor!';
+    document.getElementById('sav-travel-status').textContent = travelAmt >= TRAVEL_GOAL ? '✅ Funded' : '⚠️ Building...';
+    document.getElementById('sav-biz-status').textContent    = bizAmt >= BIZ_GOAL ? '✅ Ready' : '📈 Building';
+
+    // Trip budget
+    const flight = parseFloat(document.getElementById('trip-flight').value)  || 350;
+    const food   = parseFloat(document.getElementById('trip-food').value)    || 350;
+    const buffer = parseFloat(document.getElementById('trip-buffer').value)  || 100;
+    const tripTotal = flight + food + buffer;
+    const afterTrip = total - tripTotal;
+
+    document.getElementById('trip-total-amt').textContent    = formatCurrency(tripTotal);
+    document.getElementById('trip-after-savings').textContent = formatCurrency(afterTrip);
+    const floorCheck = document.getElementById('trip-floor-check');
+    if (afterTrip >= FLOOR) {
+        floorCheck.textContent = '✅ Still above $1,000 floor — you\'re good!';
+        floorCheck.className = 'trip-floor-check safe';
+    } else {
+        floorCheck.textContent = '🚨 Below floor after trip! Build savings first.';
+        floorCheck.className = 'trip-floor-check danger';
+    }
+
+    // Projection table
+    const monthlyAdd = parseFloat(document.getElementById('proj-monthly-add').value) || 150;
+    const projBody = document.getElementById('projBody');
+    projBody.innerHTML = '';
+    let projBal = total;
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const now = new Date();
+    for (let i = 0; i < 12; i++) {
+        projBal += monthlyAdd;
+        const monthIdx = (now.getMonth() + i + 1) % 12;
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${monthNames[monthIdx]}</td>
+            <td class="positive">${formatCurrency(monthlyAdd)}</td>
+            <td><strong>${formatCurrency(projBal)}</strong></td>
+            <td>${projBal >= FLOOR ? '✅' : '🚨'}</td>
+        `;
+        projBody.appendChild(row);
+    }
+}
+
+function saveSavingsData(data) {
+    data.savingsData = {
+        total:    parseFloat(document.getElementById('sav-total').value)       || 2100,
+        travel:   parseFloat(document.getElementById('sav-travel-amt').value) || 300,
+        biz:      parseFloat(document.getElementById('sav-biz-amt').value)    || 0,
+        overflow: parseFloat(document.getElementById('sav-overflow-amt').value) || 800,
+        tripFlight: parseFloat(document.getElementById('trip-flight').value)  || 350,
+        tripFood:   parseFloat(document.getElementById('trip-food').value)    || 350,
+        tripBuffer: parseFloat(document.getElementById('trip-buffer').value)  || 100,
+        projMonthly: parseFloat(document.getElementById('proj-monthly-add').value) || 150,
+    };
+    data.loanData = {
+        balance:  parseFloat(document.getElementById('loanBalance').value)  || 21800,
+        apr:      parseFloat(document.getElementById('loanAPR').value)      || 18.35,
+        payment:  parseFloat(document.getElementById('loanPayment').value)  || 513.46,
+        extra:    parseFloat(document.getElementById('loanExtra').value)    || 200,
+        months:   parseInt(document.getElementById('loanMonths').value)     || 72,
+    };
+    data.paycheckData = {
+        amount: parseFloat(document.getElementById('paycheckInput').value) || 1413.38,
+    };
+}
+
+function loadPersistedExtras(data) {
+    if (data.savingsData) {
+        const s = data.savingsData;
+        if (s.total    != null) document.getElementById('sav-total').value        = s.total;
+        if (s.travel   != null) document.getElementById('sav-travel-amt').value   = s.travel;
+        if (s.biz      != null) document.getElementById('sav-biz-amt').value      = s.biz;
+        if (s.overflow != null) document.getElementById('sav-overflow-amt').value = s.overflow;
+        if (s.tripFlight  != null) document.getElementById('trip-flight').value   = s.tripFlight;
+        if (s.tripFood    != null) document.getElementById('trip-food').value      = s.tripFood;
+        if (s.tripBuffer  != null) document.getElementById('trip-buffer').value   = s.tripBuffer;
+        if (s.projMonthly != null) document.getElementById('proj-monthly-add').value = s.projMonthly;
+    }
+    if (data.loanData) {
+        const l = data.loanData;
+        if (l.balance  != null) document.getElementById('loanBalance').value  = l.balance;
+        if (l.apr      != null) document.getElementById('loanAPR').value      = l.apr;
+        if (l.payment  != null) document.getElementById('loanPayment').value  = l.payment;
+        if (l.extra    != null) document.getElementById('loanExtra').value    = l.extra;
+        if (l.months   != null) document.getElementById('loanMonths').value   = l.months;
+    }
+    if (data.paycheckData) {
+        if (data.paycheckData.amount != null)
+            document.getElementById('paycheckInput').value = data.paycheckData.amount;
+    }
+}
+
 function renderAll(data) {
     renderIncomeTable(data);
     renderExpenseTable(data);
@@ -968,6 +1233,11 @@ function renderAll(data) {
     renderExpenseChart(data, getCurrentChartType('expense'));
     renderYearSummary(data);
     updateOverview(data);
+    loadPersistedExtras(data);
+    renderAutopilot();
+    renderAutopilotStats(data);
+    renderLoanCalc();
+    renderSavings();
 }
 
 async function initApp() {
