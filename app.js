@@ -879,7 +879,9 @@ function setupEventListeners() {
 
     // ── Savings
     ['sav-total','sav-travel-amt','sav-biz-amt','sav-overflow-amt',
-     'trip-flight','trip-food','trip-buffer','proj-monthly-add'].forEach(id => {
+     'trip-bnb','trip-flight','trip-food','trip-buffer',
+     'trip2-bnb','trip2-flight','trip2-food','trip2-buffer',
+     'proj-monthly-add'].forEach(id => {
         document.getElementById(id).addEventListener('input', renderSavings);
     });
 
@@ -1127,38 +1129,59 @@ function renderLoanCalc() {
 
 // ─── SAVINGS & GOALS ──────────────────────────────────────────────────────────
 function renderSavings() {
-    const total    = parseFloat(document.getElementById('sav-total').value)        || 2100;
-    const travelAmt = parseFloat(document.getElementById('sav-travel-amt').value) || 300;
-    const bizAmt   = parseFloat(document.getElementById('sav-biz-amt').value)     || 0;
-    const FLOOR    = 1000;
-    const TRAVEL_GOAL = 700;
-    const BIZ_GOAL = 500;
+    const total     = parseFloat(document.getElementById('sav-total').value)        || 2100;
+    const travelAmt = parseFloat(document.getElementById('sav-travel-amt').value)   || 300;
+    const bizAmt    = parseFloat(document.getElementById('sav-biz-amt').value)      || 0;
+    const FLOOR     = 1000;
 
     document.getElementById('sav-total-status').textContent  = total >= FLOOR ? '✅ Above Floor' : '🚨 DANGER — Below Floor!';
-    document.getElementById('sav-travel-status').textContent = travelAmt >= TRAVEL_GOAL ? '✅ Funded' : '⚠️ Building...';
-    document.getElementById('sav-biz-status').textContent    = bizAmt >= BIZ_GOAL ? '✅ Ready' : '📈 Building';
+    document.getElementById('sav-travel-status').textContent = travelAmt >= 700  ? '✅ Funded' : '⚠️ Building...';
+    document.getElementById('sav-biz-status').textContent    = bizAmt   >= 500  ? '✅ Ready'  : '📈 Building';
 
-    // Trip budget
-    const flight = parseFloat(document.getElementById('trip-flight').value)  || 350;
-    const food   = parseFloat(document.getElementById('trip-food').value)    || 350;
-    const buffer = parseFloat(document.getElementById('trip-buffer').value)  || 100;
-    const tripTotal = flight + food + buffer;
-    const afterTrip = total - tripTotal;
+    // Trip 1
+    const bnb1    = parseFloat(document.getElementById('trip-bnb').value)    || 0;
+    const flight1 = parseFloat(document.getElementById('trip-flight').value) || 0;
+    const food1   = parseFloat(document.getElementById('trip-food').value)   || 0;
+    const buf1    = parseFloat(document.getElementById('trip-buffer').value) || 0;
+    const trip1Total  = bnb1 + flight1 + food1 + buf1;
+    const afterTrip1  = total - trip1Total;
 
-    document.getElementById('trip-total-amt').textContent    = formatCurrency(tripTotal);
-    document.getElementById('trip-after-savings').textContent = formatCurrency(afterTrip);
-    const floorCheck = document.getElementById('trip-floor-check');
-    if (afterTrip >= FLOOR) {
-        floorCheck.textContent = '✅ Still above $1,000 floor — you\'re good!';
-        floorCheck.className = 'trip-floor-check safe';
+    document.getElementById('trip1-total').textContent = formatCurrency(trip1Total);
+    document.getElementById('trip1-after').textContent = formatCurrency(afterTrip1);
+    const floorBadge1 = document.getElementById('trip1-floor');
+    if (afterTrip1 >= FLOOR) {
+        floorBadge1.textContent   = '✅ Still above $1,000 floor';
+        floorBadge1.className     = 'trip-floor-badge floor-safe';
     } else {
-        floorCheck.textContent = '🚨 Below floor after trip! Build savings first.';
-        floorCheck.className = 'trip-floor-check danger';
+        floorBadge1.textContent   = '🚨 Below floor after trip!';
+        floorBadge1.className     = 'trip-floor-badge floor-danger';
+    }
+
+    // Trip 2
+    const bnb2    = parseFloat(document.getElementById('trip2-bnb').value)    || 0;
+    const flight2 = parseFloat(document.getElementById('trip2-flight').value) || 0;
+    const food2   = parseFloat(document.getElementById('trip2-food').value)   || 0;
+    const buf2    = parseFloat(document.getElementById('trip2-buffer').value) || 0;
+    const trip2Total  = bnb2 + flight2 + food2 + buf2;
+    const afterBoth   = total - trip1Total - trip2Total;
+
+    document.getElementById('trip2-total').textContent = formatCurrency(trip2Total);
+    document.getElementById('trip2-after').textContent = formatCurrency(afterBoth);
+    const floorBadge2 = document.getElementById('trip2-floor');
+    if (trip2Total === 0) {
+        floorBadge2.textContent = '—';
+        floorBadge2.className   = 'trip-floor-badge';
+    } else if (afterBoth >= FLOOR) {
+        floorBadge2.textContent = '✅ Still above $1,000 after both trips';
+        floorBadge2.className   = 'trip-floor-badge floor-safe';
+    } else {
+        floorBadge2.textContent = '🚨 Below floor after both trips!';
+        floorBadge2.className   = 'trip-floor-badge floor-danger';
     }
 
     // Projection table
     const monthlyAdd = parseFloat(document.getElementById('proj-monthly-add').value) || 150;
-    const projBody = document.getElementById('projBody');
+    const projBody   = document.getElementById('projBody');
     projBody.innerHTML = '';
     let projBal = total;
     const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -1169,7 +1192,7 @@ function renderSavings() {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${monthNames[monthIdx]}</td>
-            <td class="positive">${formatCurrency(monthlyAdd)}</td>
+            <td class="positive">+${formatCurrency(monthlyAdd)}</td>
             <td><strong>${formatCurrency(projBal)}</strong></td>
             <td>${projBal >= FLOOR ? '✅' : '🚨'}</td>
         `;
@@ -1183,9 +1206,18 @@ function saveSavingsData(data) {
         travel:   parseFloat(document.getElementById('sav-travel-amt').value) || 300,
         biz:      parseFloat(document.getElementById('sav-biz-amt').value)    || 0,
         overflow: parseFloat(document.getElementById('sav-overflow-amt').value) || 800,
+        trip1Location: document.getElementById('trip1-location').value || 'Puerto Rico 🇵🇷',
+        tripBnb:    parseFloat(document.getElementById('trip-bnb').value)     || 0,
+        tripBnbNote: document.getElementById('trip-bnb-note').value || '',
         tripFlight: parseFloat(document.getElementById('trip-flight').value)  || 350,
         tripFood:   parseFloat(document.getElementById('trip-food').value)    || 350,
         tripBuffer: parseFloat(document.getElementById('trip-buffer').value)  || 100,
+        trip2Location: document.getElementById('trip2-location').value || 'TBD 🌍',
+        trip2Bnb:    parseFloat(document.getElementById('trip2-bnb').value)   || 0,
+        trip2BnbNote: document.getElementById('trip2-bnb-note').value || '',
+        trip2Flight: parseFloat(document.getElementById('trip2-flight').value) || 0,
+        trip2Food:   parseFloat(document.getElementById('trip2-food').value)   || 0,
+        trip2Buffer: parseFloat(document.getElementById('trip2-buffer').value) || 0,
         projMonthly: parseFloat(document.getElementById('proj-monthly-add').value) || 150,
     };
     data.loanData = {
@@ -1207,9 +1239,18 @@ function loadPersistedExtras(data) {
         if (s.travel   != null) document.getElementById('sav-travel-amt').value   = s.travel;
         if (s.biz      != null) document.getElementById('sav-biz-amt').value      = s.biz;
         if (s.overflow != null) document.getElementById('sav-overflow-amt').value = s.overflow;
+        if (s.trip1Location) document.getElementById('trip1-location').value = s.trip1Location;
+        if (s.tripBnb     != null) document.getElementById('trip-bnb').value      = s.tripBnb;
+        if (s.tripBnbNote)         document.getElementById('trip-bnb-note').value  = s.tripBnbNote;
         if (s.tripFlight  != null) document.getElementById('trip-flight').value   = s.tripFlight;
         if (s.tripFood    != null) document.getElementById('trip-food').value      = s.tripFood;
         if (s.tripBuffer  != null) document.getElementById('trip-buffer').value   = s.tripBuffer;
+        if (s.trip2Location) document.getElementById('trip2-location').value = s.trip2Location;
+        if (s.trip2Bnb    != null) document.getElementById('trip2-bnb').value     = s.trip2Bnb;
+        if (s.trip2BnbNote)        document.getElementById('trip2-bnb-note').value = s.trip2BnbNote;
+        if (s.trip2Flight != null) document.getElementById('trip2-flight').value  = s.trip2Flight;
+        if (s.trip2Food   != null) document.getElementById('trip2-food').value    = s.trip2Food;
+        if (s.trip2Buffer != null) document.getElementById('trip2-buffer').value  = s.trip2Buffer;
         if (s.projMonthly != null) document.getElementById('proj-monthly-add').value = s.projMonthly;
     }
     if (data.loanData) {
