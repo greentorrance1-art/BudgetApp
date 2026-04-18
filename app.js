@@ -1033,7 +1033,6 @@ function renderAutopilot() {
     document.getElementById('ap-life').textContent = formatCurrency(alloc.life);
     document.getElementById('ap-business').textContent = formatCurrency(alloc.business);
     document.getElementById('ap-overflow').textContent = formatCurrency(alloc.overflow);
-    document.getElementById('ap-total').innerHTML = '<strong>' + formatCurrency(alloc.total) + '</strong>';
 }
 
 function renderAutopilotStats(data) {
