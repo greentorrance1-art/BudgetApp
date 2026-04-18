@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Home Budget Calculator</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=4">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
     <!-- Firebase CDN (v9 compat mode - works with original syntax) -->
@@ -305,23 +305,31 @@
                 <!-- Payoff Metrics -->
                 <div class="loan-card">
                     <div class="loan-card-title">Payoff Metrics</div>
+                    <div class="lr-stat-row">
+                        <span>Monthly Total</span>
+                        <strong id="lr-totalPayment" class="lr-val-green">—</strong>
+                    </div>
                     <div class="metric-pair">
                         <div class="mpair-item bad">
                             <div class="mpair-label">Min Only Payoff</div>
                             <div class="mpair-value" id="lr-payoffMin">—</div>
                         </div>
                         <div class="mpair-item good">
-                            <div class="mpair-label">With Extra Payoff</div>
+                            <div class="mpair-label">With Extra</div>
                             <div class="mpair-value" id="lr-payoffExtra">—</div>
                         </div>
                     </div>
-                    <div class="metric-pair" style="margin-top:12px;">
+                    <div class="lr-stat-row" style="margin-top:8px;">
+                        <span>Payoff in years</span>
+                        <strong id="lr-payoffYears" class="lr-val-green">—</strong>
+                    </div>
+                    <div class="metric-pair" style="margin-top:8px;">
                         <div class="mpair-item bad">
-                            <div class="mpair-label">Interest (min only)</div>
+                            <div class="mpair-label">Interest (min)</div>
                             <div class="mpair-value" id="lr-interestMin">—</div>
                         </div>
                         <div class="mpair-item good">
-                            <div class="mpair-label">Interest (w/ extra)</div>
+                            <div class="mpair-label">Interest (extra)</div>
                             <div class="mpair-value" id="lr-interestExtra">—</div>
                         </div>
                     </div>
