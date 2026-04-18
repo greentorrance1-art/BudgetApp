@@ -663,14 +663,18 @@ function renderColorSettings(data) {
 
 function setupEventListeners() {
     document.getElementById('monthSelector').addEventListener('change', async (e) => {
-        currentMonth = parseInt(e.target.value);
         const data = await loadData();
+        saveSavingsData(data);
+        await saveData(data);
+        currentMonth = parseInt(e.target.value);
         renderAll(data);
     });
 
     document.getElementById('yearSelector').addEventListener('change', async (e) => {
-        currentYear = parseInt(e.target.value);
         const data = await loadData();
+        saveSavingsData(data);
+        await saveData(data);
+        currentYear = parseInt(e.target.value);
         renderAll(data);
     });
 
@@ -1011,46 +1015,48 @@ function calcAutopilot(amount) {
 }
 
 function renderAutopilot() {
-    const input = parseFloat(document.getElementById('paycheckInput').value) || 0;
-    const alloc = calcAutopilot(input);
+    try {
+        const input = parseFloat(document.getElementById('paycheckInput').value) || 0;
+        const alloc = calcAutopilot(input);
 
-    const badge = document.getElementById('scenarioBadge');
-    if (input < 1300) {
-        badge.textContent = '🔴 LOW — Protect Cash';
-        badge.className = 'scenario-badge low';
-    } else if (input < 1650) {
-        badge.textContent = '🟡 NORMAL — Balanced';
-        badge.className = 'scenario-badge normal';
-    } else {
-        badge.textContent = '🟢 HIGH — Attack Debt';
-        badge.className = 'scenario-badge high';
-    }
+        const badge = document.getElementById('scenarioBadge');
+        if (badge) {
+            if (input < 1300) { badge.textContent = '🔴 LOW — Protect Cash'; badge.className = 'scenario-badge low'; }
+            else if (input < 1650) { badge.textContent = '🟡 NORMAL — Balanced'; badge.className = 'scenario-badge normal'; }
+            else { badge.textContent = '🟢 HIGH — Attack Debt'; badge.className = 'scenario-badge high'; }
+        }
 
-    document.getElementById('ap-bills').textContent = formatCurrency(alloc.halfFixed);
-    document.getElementById('ap-carextra').textContent = formatCurrency(alloc.carExtra);
-    document.getElementById('ap-savings').textContent = formatCurrency(alloc.savings);
-    document.getElementById('ap-travel').textContent = formatCurrency(alloc.travel);
-    document.getElementById('ap-life').textContent = formatCurrency(alloc.life);
-    document.getElementById('ap-business').textContent = formatCurrency(alloc.business);
-    document.getElementById('ap-overflow').textContent = formatCurrency(alloc.overflow);
+        const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+        set('ap-bills',    formatCurrency(alloc.halfFixed));
+        set('ap-carextra', formatCurrency(alloc.carExtra));
+        set('ap-savings',  formatCurrency(alloc.savings));
+        set('ap-travel',   formatCurrency(alloc.travel));
+        set('ap-life',     formatCurrency(alloc.life));
+        set('ap-business', formatCurrency(alloc.business));
+        set('ap-overflow', formatCurrency(alloc.overflow));
+    } catch(e) { console.warn('[Autopilot] render error:', e.message); }
 }
 
 function renderAutopilotStats(data) {
-    let allChecks = [];
-    if (data && data.years) {
-        Object.values(data.years).forEach(yr => {
-            Object.values(yr).forEach(mo => {
-                if (mo.income) {
-                    mo.income.forEach(item => {
-                        if (item.actual > 0) allChecks.push(item.actual);
-                    });
-                }
+    try {
+        let allChecks = [];
+        if (data && data.years) {
+            Object.values(data.years).forEach(yr => {
+                Object.values(yr).forEach(mo => {
+                    if (mo.income) {
+                        mo.income.forEach(item => {
+                            if (item.actual > 0) allChecks.push(item.actual);
+                        });
+                    }
+                });
             });
-        });
-    }
-    const avg = allChecks.length ? allChecks.reduce((a,b)=>a+b,0)/allChecks.length : 1413.38;
-    document.getElementById('apAvgCheck').textContent = formatCurrency(avg);
-    document.getElementById('apAvgMonthly').textContent = formatCurrency(avg * 2);
+        }
+        const avg = allChecks.length ? allChecks.reduce((a,b)=>a+b,0)/allChecks.length : 1413.38;
+        const elAvg = document.getElementById('apAvgCheck');
+        const elMo  = document.getElementById('apAvgMonthly');
+        if (elAvg) elAvg.textContent = formatCurrency(avg);
+        if (elMo)  elMo.textContent  = formatCurrency(avg * 2);
+    } catch(e) { console.warn('[AutopilotStats] render error:', e.message); }
 }
 
 // ─── CAR LOAN ─────────────────────────────────────────────────────────────────
@@ -1065,205 +1071,175 @@ function pmt(rate, nPer, pv) {
 }
 
 function renderLoanCalc() {
-    const balance  = parseFloat(document.getElementById('loanBalance').value)  || 21800;
-    const apr      = parseFloat(document.getElementById('loanAPR').value)       || 18.35;
-    const base     = parseFloat(document.getElementById('loanPayment').value)   || 513.46;
-    const extra    = parseFloat(document.getElementById('loanExtra').value)     || 200;
-    const months   = parseInt(document.getElementById('loanMonths').value)      || 72;
+    try {
+        const g = id => document.getElementById(id);
+        const balance = parseFloat(g('loanBalance') && g('loanBalance').value) || 21800;
+        const apr     = parseFloat(g('loanAPR')     && g('loanAPR').value)     || 18.35;
+        const base    = parseFloat(g('loanPayment') && g('loanPayment').value) || 513.46;
+        const extra   = parseFloat(g('loanExtra')   && g('loanExtra').value)   || 200;
 
-    const rate = apr / 100 / 12;
-    const totalPayment = base + extra;
+        const rate = apr / 100 / 12;
+        const totalPayment = base + extra;
 
-    const payoffMin   = nper(rate, base, balance);
-    const payoffExtra = nper(rate, totalPayment, balance);
-    const payoffYrs   = payoffExtra / 12;
+        const payoffMin   = nper(rate, base, balance);
+        const payoffExtra = nper(rate, totalPayment, balance);
+        const payoffYrs   = payoffExtra / 12;
+        const interestMin   = Math.max(0, base * payoffMin - balance);
+        const interestExtra = Math.max(0, totalPayment * payoffExtra - balance);
+        const interestSaved = interestMin - interestExtra;
 
-    const interestMin   = Math.max(0, base * payoffMin - balance);
-    const interestExtra = Math.max(0, totalPayment * payoffExtra - balance);
-    const interestSaved = interestMin - interestExtra;
+        const set = (id, val) => { const el = g(id); if (el) el.textContent = val; };
+        set('lr-totalPayment',  formatCurrency(totalPayment));
+        set('lr-payoffMin',     payoffMin.toFixed(1) + ' mo');
+        set('lr-payoffExtra',   payoffExtra.toFixed(1) + ' mo');
+        set('lr-payoffYears',   payoffYrs.toFixed(1) + ' yrs');
+        set('lr-interestMin',   formatCurrency(interestMin));
+        set('lr-interestExtra', formatCurrency(interestExtra));
+        set('lr-interestSaved', formatCurrency(interestSaved));
 
-    document.getElementById('lr-totalPayment').textContent  = formatCurrency(totalPayment);
-    document.getElementById('lr-payoffMin').textContent     = payoffMin.toFixed(1) + ' mo';
-    document.getElementById('lr-payoffExtra').textContent   = payoffExtra.toFixed(1) + ' mo';
-    document.getElementById('lr-payoffYears').textContent   = payoffYrs.toFixed(1) + ' yrs';
-    document.getElementById('lr-interestMin').textContent   = formatCurrency(interestMin);
-    document.getElementById('lr-interestExtra').textContent = formatCurrency(interestExtra);
-    document.getElementById('lr-interestSaved').textContent = formatCurrency(interestSaved);
+        // Refinance sim
+        const curPmt  = pmt(rate, 60, balance);
+        const newPmt  = pmt(0.08 / 12, 60, balance);
+        const curInt  = curPmt * 60 - balance;
+        const newInt  = newPmt * 60 - balance;
+        set('refi-curPayment',    formatCurrency(curPmt));
+        set('refi-newPayment',    formatCurrency(newPmt));
+        set('refi-curInterest',   formatCurrency(curInt));
+        set('refi-newInterest',   formatCurrency(newInt));
+        set('refi-monthlySavings', formatCurrency(curPmt - newPmt));
+        set('refi-totalSavings',   formatCurrency(curInt - newInt));
 
-    // Refinance sim (60 months)
-    const refiBalance = balance;
-    const curPmt  = pmt(rate, 60, refiBalance);
-    const newRate = 0.08 / 12;
-    const newPmt  = pmt(newRate, 60, refiBalance);
-    const curInt  = curPmt * 60 - refiBalance;
-    const newInt  = newPmt * 60 - refiBalance;
-
-    document.getElementById('refi-curPayment').textContent    = formatCurrency(curPmt);
-    document.getElementById('refi-newPayment').textContent    = formatCurrency(newPmt);
-    document.getElementById('refi-curInterest').textContent   = formatCurrency(curInt);
-    document.getElementById('refi-newInterest').textContent   = formatCurrency(newInt);
-    document.getElementById('refi-monthlySavings').textContent = formatCurrency(curPmt - newPmt);
-    document.getElementById('refi-totalSavings').textContent  = formatCurrency(curInt - newInt);
-
-    // Amortization
-    const tbody = document.getElementById('amortBody');
-    tbody.innerHTML = '';
-    let bal = balance;
-    for (let mo = 1; mo <= 12; mo++) {
-        const interest   = bal * rate;
-        const principal  = Math.min(bal, totalPayment - interest);
-        bal = Math.max(0, bal - principal);
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>Month ${mo}</td>
-            <td>${formatCurrency(base)}</td>
-            <td class="positive">${formatCurrency(extra)}</td>
-            <td class="negative">${formatCurrency(interest)}</td>
-            <td class="positive">${formatCurrency(principal)}</td>
-            <td><strong>${formatCurrency(bal)}</strong></td>
-        `;
-        tbody.appendChild(row);
-    }
+        // Amortization
+        const tbody = g('amortBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        let bal = balance;
+        for (let mo = 1; mo <= 12; mo++) {
+            const interest  = bal * rate;
+            const principal = Math.min(bal, totalPayment - interest);
+            bal = Math.max(0, bal - principal);
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>Month ${mo}</td>
+                <td>${formatCurrency(base)}</td>
+                <td class="positive">${formatCurrency(extra)}</td>
+                <td class="negative">${formatCurrency(interest)}</td>
+                <td class="positive">${formatCurrency(principal)}</td>
+                <td><strong>${formatCurrency(bal)}</strong></td>
+            `;
+            tbody.appendChild(row);
+        }
+    } catch(e) { console.warn('[LoanCalc] render error:', e.message); }
 }
 
 // ─── SAVINGS & GOALS ──────────────────────────────────────────────────────────
 function renderSavings() {
-    const total     = parseFloat(document.getElementById('sav-total').value)        || 2100;
-    const travelAmt = parseFloat(document.getElementById('sav-travel-amt').value)   || 300;
-    const bizAmt    = parseFloat(document.getElementById('sav-biz-amt').value)      || 0;
-    const FLOOR     = 1000;
+    try {
+        const g   = id => document.getElementById(id);
+        const gv  = (id, def) => { const el = g(id); return el ? (parseFloat(el.value) || def) : def; };
+        const set = (id, val) => { const el = g(id); if (el) el.textContent = val; };
+        const FLOOR = 1000;
 
-    document.getElementById('sav-total-status').textContent  = total >= FLOOR ? '✅ Above Floor' : '🚨 DANGER — Below Floor!';
-    document.getElementById('sav-travel-status').textContent = travelAmt >= 700  ? '✅ Funded' : '⚠️ Building...';
-    document.getElementById('sav-biz-status').textContent    = bizAmt   >= 500  ? '✅ Ready'  : '📈 Building';
+        const total     = gv('sav-total', 2100);
+        const travelAmt = gv('sav-travel-amt', 300);
+        const bizAmt    = gv('sav-biz-amt', 0);
 
-    // Trip 1
-    const bnb1    = parseFloat(document.getElementById('trip-bnb').value)    || 0;
-    const flight1 = parseFloat(document.getElementById('trip-flight').value) || 0;
-    const food1   = parseFloat(document.getElementById('trip-food').value)   || 0;
-    const buf1    = parseFloat(document.getElementById('trip-buffer').value) || 0;
-    const trip1Total  = bnb1 + flight1 + food1 + buf1;
-    const afterTrip1  = total - trip1Total;
+        set('sav-total-status',  total >= FLOOR  ? '✅ Above Floor' : '🚨 DANGER — Below Floor!');
+        set('sav-travel-status', travelAmt >= 700 ? '✅ Funded'     : '⚠️ Building...');
+        set('sav-biz-status',    bizAmt >= 500    ? '✅ Ready'      : '📈 Building');
 
-    document.getElementById('trip1-total').textContent = formatCurrency(trip1Total);
-    document.getElementById('trip1-after').textContent = formatCurrency(afterTrip1);
-    const floorBadge1 = document.getElementById('trip1-floor');
-    if (afterTrip1 >= FLOOR) {
-        floorBadge1.textContent   = '✅ Still above $1,000 floor';
-        floorBadge1.className     = 'trip-floor-badge floor-safe';
-    } else {
-        floorBadge1.textContent   = '🚨 Below floor after trip!';
-        floorBadge1.className     = 'trip-floor-badge floor-danger';
-    }
+        const bnb1 = gv('trip-bnb', 0); const flight1 = gv('trip-flight', 350);
+        const food1 = gv('trip-food', 350); const buf1 = gv('trip-buffer', 100);
+        const trip1Total = bnb1 + flight1 + food1 + buf1;
+        const afterTrip1 = total - trip1Total;
+        set('trip1-total', formatCurrency(trip1Total));
+        set('trip1-after', formatCurrency(afterTrip1));
+        const fb1 = g('trip1-floor');
+        if (fb1) {
+            fb1.textContent = afterTrip1 >= FLOOR ? '✅ Still above $1,000 floor' : '🚨 Below floor after trip!';
+            fb1.className   = 'trip-floor-badge ' + (afterTrip1 >= FLOOR ? 'floor-safe' : 'floor-danger');
+        }
 
-    // Trip 2
-    const bnb2    = parseFloat(document.getElementById('trip2-bnb').value)    || 0;
-    const flight2 = parseFloat(document.getElementById('trip2-flight').value) || 0;
-    const food2   = parseFloat(document.getElementById('trip2-food').value)   || 0;
-    const buf2    = parseFloat(document.getElementById('trip2-buffer').value) || 0;
-    const trip2Total  = bnb2 + flight2 + food2 + buf2;
-    const afterBoth   = total - trip1Total - trip2Total;
+        const bnb2 = gv('trip2-bnb', 0); const flight2 = gv('trip2-flight', 0);
+        const food2 = gv('trip2-food', 0); const buf2 = gv('trip2-buffer', 0);
+        const trip2Total = bnb2 + flight2 + food2 + buf2;
+        const afterBoth  = total - trip1Total - trip2Total;
+        set('trip2-total', formatCurrency(trip2Total));
+        set('trip2-after', formatCurrency(afterBoth));
+        const fb2 = g('trip2-floor');
+        if (fb2) {
+            if (trip2Total === 0) { fb2.textContent = '—'; fb2.className = 'trip-floor-badge'; }
+            else {
+                fb2.textContent = afterBoth >= FLOOR ? '✅ Still above $1,000 after both trips' : '🚨 Below floor after both trips!';
+                fb2.className   = 'trip-floor-badge ' + (afterBoth >= FLOOR ? 'floor-safe' : 'floor-danger');
+            }
+        }
 
-    document.getElementById('trip2-total').textContent = formatCurrency(trip2Total);
-    document.getElementById('trip2-after').textContent = formatCurrency(afterBoth);
-    const floorBadge2 = document.getElementById('trip2-floor');
-    if (trip2Total === 0) {
-        floorBadge2.textContent = '—';
-        floorBadge2.className   = 'trip-floor-badge';
-    } else if (afterBoth >= FLOOR) {
-        floorBadge2.textContent = '✅ Still above $1,000 after both trips';
-        floorBadge2.className   = 'trip-floor-badge floor-safe';
-    } else {
-        floorBadge2.textContent = '🚨 Below floor after both trips!';
-        floorBadge2.className   = 'trip-floor-badge floor-danger';
-    }
-
-    // Projection table
-    const monthlyAdd = parseFloat(document.getElementById('proj-monthly-add').value) || 150;
-    const projBody   = document.getElementById('projBody');
-    projBody.innerHTML = '';
-    let projBal = total;
-    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const now = new Date();
-    for (let i = 0; i < 12; i++) {
-        projBal += monthlyAdd;
-        const monthIdx = (now.getMonth() + i + 1) % 12;
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${monthNames[monthIdx]}</td>
-            <td class="positive">+${formatCurrency(monthlyAdd)}</td>
-            <td><strong>${formatCurrency(projBal)}</strong></td>
-            <td>${projBal >= FLOOR ? '✅' : '🚨'}</td>
-        `;
-        projBody.appendChild(row);
-    }
+        const monthlyAdd = gv('proj-monthly-add', 150);
+        const projBody   = g('projBody');
+        if (projBody) {
+            projBody.innerHTML = '';
+            let projBal = total;
+            const mn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            const now = new Date();
+            for (let i = 0; i < 12; i++) {
+                projBal += monthlyAdd;
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${mn[(now.getMonth()+i+1)%12]}</td><td class="positive">+${formatCurrency(monthlyAdd)}</td><td><strong>${formatCurrency(projBal)}</strong></td><td>${projBal>=FLOOR?'✅':'🚨'}</td>`;
+                projBody.appendChild(row);
+            }
+        }
+    } catch(e) { console.warn('[Savings] render error:', e.message); }
 }
 
 function saveSavingsData(data) {
-    data.savingsData = {
-        total:    parseFloat(document.getElementById('sav-total').value)       || 2100,
-        travel:   parseFloat(document.getElementById('sav-travel-amt').value) || 300,
-        biz:      parseFloat(document.getElementById('sav-biz-amt').value)    || 0,
-        overflow: parseFloat(document.getElementById('sav-overflow-amt').value) || 800,
-        trip1Location: document.getElementById('trip1-location').value || 'Puerto Rico 🇵🇷',
-        tripBnb:    parseFloat(document.getElementById('trip-bnb').value)     || 0,
-        tripBnbNote: document.getElementById('trip-bnb-note').value || '',
-        tripFlight: parseFloat(document.getElementById('trip-flight').value)  || 350,
-        tripFood:   parseFloat(document.getElementById('trip-food').value)    || 350,
-        tripBuffer: parseFloat(document.getElementById('trip-buffer').value)  || 100,
-        trip2Location: document.getElementById('trip2-location').value || 'TBD 🌍',
-        trip2Bnb:    parseFloat(document.getElementById('trip2-bnb').value)   || 0,
-        trip2BnbNote: document.getElementById('trip2-bnb-note').value || '',
-        trip2Flight: parseFloat(document.getElementById('trip2-flight').value) || 0,
-        trip2Food:   parseFloat(document.getElementById('trip2-food').value)   || 0,
-        trip2Buffer: parseFloat(document.getElementById('trip2-buffer').value) || 0,
-        projMonthly: parseFloat(document.getElementById('proj-monthly-add').value) || 150,
-    };
-    data.loanData = {
-        balance:  parseFloat(document.getElementById('loanBalance').value)  || 21800,
-        apr:      parseFloat(document.getElementById('loanAPR').value)      || 18.35,
-        payment:  parseFloat(document.getElementById('loanPayment').value)  || 513.46,
-        extra:    parseFloat(document.getElementById('loanExtra').value)    || 200,
-        months:   parseInt(document.getElementById('loanMonths').value)     || 72,
-    };
-    data.paycheckData = {
-        amount: parseFloat(document.getElementById('paycheckInput').value) || 1413.38,
-    };
+    try {
+        const gv  = (id, def) => { const el = document.getElementById(id); return el ? (parseFloat(el.value) || def) : def; };
+        const gvs = (id, def) => { const el = document.getElementById(id); return el ? (el.value || def) : def; };
+        data.savingsData = {
+            total: gv('sav-total', 2100), travel: gv('sav-travel-amt', 300),
+            biz: gv('sav-biz-amt', 0), overflow: gv('sav-overflow-amt', 800),
+            trip1Location: gvs('trip1-location', 'Puerto Rico 🇵🇷'),
+            tripBnb: gv('trip-bnb', 0), tripBnbNote: gvs('trip-bnb-note', ''),
+            tripFlight: gv('trip-flight', 350), tripFood: gv('trip-food', 350),
+            tripBuffer: gv('trip-buffer', 100),
+            trip2Location: gvs('trip2-location', 'TBD 🌍'),
+            trip2Bnb: gv('trip2-bnb', 0), trip2BnbNote: gvs('trip2-bnb-note', ''),
+            trip2Flight: gv('trip2-flight', 0), trip2Food: gv('trip2-food', 0),
+            trip2Buffer: gv('trip2-buffer', 0), projMonthly: gv('proj-monthly-add', 150),
+        };
+        data.loanData = {
+            balance: gv('loanBalance', 21800), apr: gv('loanAPR', 18.35),
+            payment: gv('loanPayment', 513.46), extra: gv('loanExtra', 200),
+            months: gv('loanMonths', 72),
+        };
+        data.paycheckData = { amount: gv('paycheckInput', 1413.38) };
+    } catch(e) { console.warn('[saveSavingsData] error:', e.message); }
 }
 
 function loadPersistedExtras(data) {
-    if (data.savingsData) {
-        const s = data.savingsData;
-        if (s.total    != null) document.getElementById('sav-total').value        = s.total;
-        if (s.travel   != null) document.getElementById('sav-travel-amt').value   = s.travel;
-        if (s.biz      != null) document.getElementById('sav-biz-amt').value      = s.biz;
-        if (s.overflow != null) document.getElementById('sav-overflow-amt').value = s.overflow;
-        if (s.trip1Location) document.getElementById('trip1-location').value = s.trip1Location;
-        if (s.tripBnb     != null) document.getElementById('trip-bnb').value      = s.tripBnb;
-        if (s.tripBnbNote)         document.getElementById('trip-bnb-note').value  = s.tripBnbNote;
-        if (s.tripFlight  != null) document.getElementById('trip-flight').value   = s.tripFlight;
-        if (s.tripFood    != null) document.getElementById('trip-food').value      = s.tripFood;
-        if (s.tripBuffer  != null) document.getElementById('trip-buffer').value   = s.tripBuffer;
-        if (s.trip2Location) document.getElementById('trip2-location').value = s.trip2Location;
-        if (s.trip2Bnb    != null) document.getElementById('trip2-bnb').value     = s.trip2Bnb;
-        if (s.trip2BnbNote)        document.getElementById('trip2-bnb-note').value = s.trip2BnbNote;
-        if (s.trip2Flight != null) document.getElementById('trip2-flight').value  = s.trip2Flight;
-        if (s.trip2Food   != null) document.getElementById('trip2-food').value    = s.trip2Food;
-        if (s.trip2Buffer != null) document.getElementById('trip2-buffer').value  = s.trip2Buffer;
-        if (s.projMonthly != null) document.getElementById('proj-monthly-add').value = s.projMonthly;
-    }
-    if (data.loanData) {
-        const l = data.loanData;
-        if (l.balance  != null) document.getElementById('loanBalance').value  = l.balance;
-        if (l.apr      != null) document.getElementById('loanAPR').value      = l.apr;
-        if (l.payment  != null) document.getElementById('loanPayment').value  = l.payment;
-        if (l.extra    != null) document.getElementById('loanExtra').value    = l.extra;
-        if (l.months   != null) document.getElementById('loanMonths').value   = l.months;
-    }
-    if (data.paycheckData) {
-        if (data.paycheckData.amount != null)
-            document.getElementById('paycheckInput').value = data.paycheckData.amount;
-    }
+    try {
+        const sv = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
+        if (data.savingsData) {
+            const s = data.savingsData;
+            sv('sav-total', s.total); sv('sav-travel-amt', s.travel);
+            sv('sav-biz-amt', s.biz); sv('sav-overflow-amt', s.overflow);
+            sv('trip1-location', s.trip1Location); sv('trip-bnb', s.tripBnb);
+            sv('trip-bnb-note', s.tripBnbNote); sv('trip-flight', s.tripFlight);
+            sv('trip-food', s.tripFood); sv('trip-buffer', s.tripBuffer);
+            sv('trip2-location', s.trip2Location); sv('trip2-bnb', s.trip2Bnb);
+            sv('trip2-bnb-note', s.trip2BnbNote); sv('trip2-flight', s.trip2Flight);
+            sv('trip2-food', s.trip2Food); sv('trip2-buffer', s.trip2Buffer);
+            sv('proj-monthly-add', s.projMonthly);
+        }
+        if (data.loanData) {
+            const l = data.loanData;
+            sv('loanBalance', l.balance); sv('loanAPR', l.apr);
+            sv('loanPayment', l.payment); sv('loanExtra', l.extra);
+            sv('loanMonths', l.months);
+        }
+        if (data.paycheckData) sv('paycheckInput', data.paycheckData.amount);
+    } catch(e) { console.warn('[loadPersistedExtras] error:', e.message); }
 }
 
 function renderAll(data) {
