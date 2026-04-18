@@ -529,7 +529,13 @@ function renderColorSettings(data) {
 }
 
 function setupEventListeners() {
-    document.getElementById('monthSelector').addEventListener('change', async (e) => {
+    const on = (id, event, fn) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener(event, fn);
+        else console.warn('[Setup] Missing element:', id);
+    };
+
+    on('monthSelector', 'change', async (e) => {
         const data = await loadData();
         saveSavingsData(data);
         await saveData(data);
@@ -537,7 +543,7 @@ function setupEventListeners() {
         renderAll(data);
     });
 
-    document.getElementById('yearSelector').addEventListener('change', async (e) => {
+    on('yearSelector', 'change', async (e) => {
         const data = await loadData();
         saveSavingsData(data);
         await saveData(data);
@@ -545,54 +551,44 @@ function setupEventListeners() {
         renderAll(data);
     });
 
-    document.getElementById('themeToggle').addEventListener('click', async () => {
+    on('themeToggle', 'click', async () => {
         const data = await loadData();
         data.theme = data.theme === 'light' ? 'dark' : 'light';
         applyTheme(data.theme);
         await saveData(data);
     });
 
-    document.getElementById('settingsBtn').addEventListener('click', async () => {
+    on('settingsBtn', 'click', async () => {
         const data = await loadData();
         renderColorSettings(data);
-        document.getElementById('settingsModal').style.display = 'block';
+        const modal = document.getElementById('settingsModal');
+        if (modal) modal.style.display = 'block';
     });
 
-    document.getElementById('closeSettings').addEventListener('click', () => {
-        document.getElementById('settingsModal').style.display = 'none';
+    on('closeSettings', 'click', () => {
+        const modal = document.getElementById('settingsModal');
+        if (modal) modal.style.display = 'none';
     });
 
     window.addEventListener('click', (e) => {
         const modal = document.getElementById('settingsModal');
-        if (e.target === modal) {
-            modal.style.display = 'none';
-        }
+        if (modal && e.target === modal) modal.style.display = 'none';
     });
 
-    document.getElementById('addIncomeBtn').addEventListener('click', async () => {
+    on('addIncomeBtn', 'click', async () => {
         const data = await loadData();
         const monthData = getCurrentMonthData(data);
-        monthData.income.push({
-            id: generateUniqueId(),
-            description: '',
-            estimated: 0,
-            actual: 0
-        });
+        monthData.income.push({ id: generateUniqueId(), description: '', estimated: 0, actual: 0 });
         monthData.incomeColors.push(generateUniqueColors(1, monthData.incomeColors)[0]);
         await saveData(data);
         renderIncomeTable(data);
         renderIncomeChart(data, getCurrentChartType('income'));
     });
 
-    document.getElementById('addExpenseBtn').addEventListener('click', async () => {
+    on('addExpenseBtn', 'click', async () => {
         const data = await loadData();
         const monthData = getCurrentMonthData(data);
-        monthData.expenses.push({
-            id: generateUniqueId(),
-            description: '',
-            estimated: 0,
-            actual: 0
-        });
+        monthData.expenses.push({ id: generateUniqueId(), description: '', estimated: 0, actual: 0 });
         monthData.expenseColors.push(generateUniqueColors(1, monthData.expenseColors)[0]);
         await saveData(data);
         renderExpenseTable(data);
@@ -605,22 +601,15 @@ function setupEventListeners() {
             const type = e.target.dataset.type;
             const data = await loadData();
             const monthData = getCurrentMonthData(data);
-
             if (type === 'income') {
                 const index = monthData.income.findIndex(item => item.id === id);
-                if (index !== -1) {
-                    monthData.income.splice(index, 1);
-                    monthData.incomeColors.splice(index, 1);
-                }
+                if (index !== -1) { monthData.income.splice(index, 1); monthData.incomeColors.splice(index, 1); }
                 await saveData(data);
                 renderIncomeTable(data);
                 renderIncomeChart(data, getCurrentChartType('income'));
             } else {
                 const index = monthData.expenses.findIndex(item => item.id === id);
-                if (index !== -1) {
-                    monthData.expenses.splice(index, 1);
-                    monthData.expenseColors.splice(index, 1);
-                }
+                if (index !== -1) { monthData.expenses.splice(index, 1); monthData.expenseColors.splice(index, 1); }
                 await saveData(data);
                 renderExpenseTable(data);
                 renderExpenseChart(data, getCurrentChartType('expense'));
@@ -635,46 +624,27 @@ function setupEventListeners() {
             const field = e.target.dataset.field;
             const type = e.target.dataset.type;
             const value = e.target.value;
-
             const data = await loadData();
             const monthData = getCurrentMonthData(data);
-
             const array = type === 'income' ? monthData.income : monthData.expenses;
             const item = array.find(item => item.id === id);
-
             if (item) {
-                if (field === 'description') {
-                    item[field] = value;
-                } else {
-                    item[field] = parseNumber(value);
-                }
+                item[field] = field === 'description' ? value : parseNumber(value);
                 await saveData(data);
                 updateTotals(data);
-
-                if (type === 'income') {
-                    renderIncomeChart(data, getCurrentChartType('income'));
-                } else {
-                    renderExpenseChart(data, getCurrentChartType('expense'));
-                }
+                if (type === 'income') renderIncomeChart(data, getCurrentChartType('income'));
+                else renderExpenseChart(data, getCurrentChartType('expense'));
                 renderYearSummary(data);
             }
         }
-
         if (e.target.type === 'color') {
             const type = e.target.dataset.type;
             const index = parseInt(e.target.dataset.index);
             const color = e.target.value;
-
             const data = await loadData();
             const monthData = getCurrentMonthData(data);
-
-            if (type === 'income') {
-                monthData.incomeColors[index] = color;
-                renderIncomeChart(data, getCurrentChartType('income'));
-            } else {
-                monthData.expenseColors[index] = color;
-                renderExpenseChart(data, getCurrentChartType('expense'));
-            }
+            if (type === 'income') { monthData.incomeColors[index] = color; renderIncomeChart(data, getCurrentChartType('income')); }
+            else { monthData.expenseColors[index] = color; renderExpenseChart(data, getCurrentChartType('expense')); }
             await saveData(data);
         }
     });
@@ -683,19 +653,13 @@ function setupEventListeners() {
         if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.dataset.id) {
             const type = e.target.dataset.type;
             const id = e.target.dataset.id;
-
             const data = await loadData();
             const monthData = getCurrentMonthData(data);
-
             const array = type === 'income' ? monthData.income : monthData.expenses;
             const index = array.findIndex(item => item.id === id);
-
             if (index === array.length - 1) {
-                if (type === 'income') {
-                    document.getElementById('addIncomeBtn').click();
-                } else {
-                    document.getElementById('addExpenseBtn').click();
-                }
+                const btn = document.getElementById(type === 'income' ? 'addIncomeBtn' : 'addExpenseBtn');
+                if (btn) btn.click();
             }
         }
     });
@@ -704,22 +668,15 @@ function setupEventListeners() {
         btn.addEventListener('click', async (e) => {
             const chartType = e.target.dataset.chart;
             const dataType = e.target.dataset.type;
-
-            document.querySelectorAll(`.toggle-btn[data-chart="${chartType}"]`).forEach(b => {
-                b.classList.remove('active');
-            });
+            document.querySelectorAll(`.toggle-btn[data-chart="${chartType}"]`).forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
-
             const data = await loadData();
-            if (chartType === 'income') {
-                renderIncomeChart(data, dataType);
-            } else {
-                renderExpenseChart(data, dataType);
-            }
+            if (chartType === 'income') renderIncomeChart(data, dataType);
+            else renderExpenseChart(data, dataType);
         });
     });
 
-    document.getElementById('randomizeIncomeColors').addEventListener('click', async () => {
+    on('randomizeIncomeColors', 'click', async () => {
         const data = await loadData();
         const monthData = getCurrentMonthData(data);
         monthData.incomeColors = generateUniqueColors(monthData.income.length);
@@ -728,7 +685,7 @@ function setupEventListeners() {
         renderIncomeChart(data, getCurrentChartType('income'));
     });
 
-    document.getElementById('randomizeExpenseColors').addEventListener('click', async () => {
+    on('randomizeExpenseColors', 'click', async () => {
         const data = await loadData();
         const monthData = getCurrentMonthData(data);
         monthData.expenseColors = generateUniqueColors(monthData.expenses.length);
@@ -737,56 +694,36 @@ function setupEventListeners() {
         renderExpenseChart(data, getCurrentChartType('expense'));
     });
 
-    // ── Paycheck Autopilot
-    document.getElementById('paycheckInput').addEventListener('input', () => {
-        renderAutopilot();
-    });
+    on('paycheckInput',  'input', renderAutopilot);
+    on('ap-fixed-bills', 'input', renderAutopilot);
 
-    const apFixed = document.getElementById('ap-fixed-bills');
-    if (apFixed) apFixed.addEventListener('input', () => renderAutopilot());
+    on('calcLoanBtn', 'click', renderLoanCalc);
+    ['loanBalance','loanAPR','loanPayment','loanExtra','loanMonths'].forEach(id => on(id, 'input', renderLoanCalc));
 
-    // ── Car Loan
-    document.getElementById('calcLoanBtn').addEventListener('click', renderLoanCalc);
-    ['loanBalance','loanAPR','loanPayment','loanExtra','loanMonths'].forEach(id => {
-        document.getElementById(id).addEventListener('input', renderLoanCalc);
-    });
-
-    // ── Savings
     ['sav-total','sav-travel-amt','sav-biz-amt','sav-overflow-amt',
      'trip-bnb','trip-flight','trip-food','trip-buffer',
      'trip2-bnb','trip2-flight','trip2-food','trip2-buffer',
-     'proj-monthly-add'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.addEventListener('input', renderSavings);
+     'proj-monthly-add'].forEach(id => on(id, 'input', renderSavings));
+
+    on('proj-start-month', 'change', renderSavings);
+
+    on('sav-total', 'input', async () => {
+        const data = await loadData();
+        updateOverview(data);
     });
 
-    // Sync sav-total → dashboard savings display live
-    const savTotalInput = document.getElementById('sav-total');
-    if (savTotalInput) {
-        savTotalInput.addEventListener('input', async () => {
-            const data = await loadData();
-            updateOverview(data);
-        });
-    }
-
-    // Projection start month dropdown
-    const projStart = document.getElementById('proj-start-month');
-    if (projStart) projStart.addEventListener('change', renderSavings);
-
-    document.getElementById('saveSavingsBtn').addEventListener('click', async () => {
+    on('saveSavingsBtn', 'click', async () => {
         const data = await loadData();
         saveSavingsData(data);
         await saveData(data);
         renderSavings();
         const btn = document.getElementById('saveSavingsBtn');
-        btn.textContent = '✅ Saved!';
-        setTimeout(() => { btn.textContent = '💾 Save Balances'; }, 1500);
+        if (btn) { btn.textContent = '✅ Saved!'; setTimeout(() => { btn.textContent = '💾 Save Balances'; }, 1500); }
     });
 
-    document.getElementById('exportDataBtn').addEventListener('click', async () => {
+    on('exportDataBtn', 'click', async () => {
         const data = await loadData();
-        const dataStr = JSON.stringify(data, null, 2);
-        const blob = new Blob([dataStr], { type: 'application/json' });
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -795,11 +732,9 @@ function setupEventListeners() {
         URL.revokeObjectURL(url);
     });
 
-    document.getElementById('importDataBtn').addEventListener('click', () => {
-        document.getElementById('importFileInput').click();
-    });
+    on('importDataBtn', 'click', () => { const el = document.getElementById('importFileInput'); if (el) el.click(); });
 
-    document.getElementById('importFileInput').addEventListener('change', async (e) => {
+    on('importFileInput', 'change', async (e) => {
         const file = e.target.files[0];
         if (file) {
             const reader = new FileReader();
@@ -808,61 +743,40 @@ function setupEventListeners() {
                     const importedData = JSON.parse(event.target.result);
                     await saveData(importedData);
                     renderAll(importedData);
-                    document.getElementById('settingsModal').style.display = 'none';
+                    const modal = document.getElementById('settingsModal');
+                    if (modal) modal.style.display = 'none';
                     alert('Data imported successfully!');
-                } catch (error) {
-                    alert('Error importing data. Please check the file format.');
-                }
+                } catch (error) { alert('Error importing data. Please check the file format.'); }
             };
             reader.readAsText(file);
         }
         e.target.value = '';
     });
 
-    document.getElementById('resetDataBtn').addEventListener('click', async () => {
+    on('resetDataBtn', 'click', async () => {
         if (confirm('Are you sure you want to reset all data? This action cannot be undone.')) {
             const defaultData = getDefaultData();
             await saveData(defaultData);
             renderAll(defaultData);
-            document.getElementById('settingsModal').style.display = 'none';
+            const modal = document.getElementById('settingsModal');
+            if (modal) modal.style.display = 'none';
             alert('All data has been reset.');
         }
     });
 
-    document.getElementById('signOutBtn').addEventListener('click', async () => {
+    on('signOutBtn', 'click', async () => {
         if (confirm('Are you sure you want to sign out?')) {
             try {
-                console.log('[Auth] Signing out...');
-
-                // Stop Firestore listener
-                if (unsubscribe) {
-                    console.log('[Firestore] Stopping listener');
-                    unsubscribe();
-                    unsubscribe = null;
-                }
-
-                // Disable Firebase sync
+                if (unsubscribe) { unsubscribe(); unsubscribe = null; }
                 useFirebaseSync = false;
-
-                // Reset app initialization flag
                 isAppInitialized = false;
-
-                // Sign out from Firebase
                 await auth.signOut();
-                console.log('[Auth] Sign out successful');
-
-                // Close settings modal
-                document.getElementById('settingsModal').style.display = 'none';
-
-                // The onAuthStateChanged listener will automatically show the login form
-            } catch (error) {
-                console.error('[Auth] Sign out failed:', error.code, error.message);
-                alert('Sign out failed: ' + error.message);
-            }
+                const modal = document.getElementById('settingsModal');
+                if (modal) modal.style.display = 'none';
+            } catch (error) { alert('Sign out failed: ' + error.message); }
         }
     });
 }
-
 function getCurrentChartType(chart) {
     const activeBtn = document.querySelector(`.toggle-btn[data-chart="${chart}"].active`);
     return activeBtn ? activeBtn.dataset.type : 'actual';
