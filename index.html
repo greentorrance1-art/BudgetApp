@@ -187,6 +187,303 @@
             </div>
         </section>
 
+        <!-- ⚡ PAYCHECK AUTOPILOT -->
+        <section class="budget-section autopilot-section">
+            <h2>⚡ Paycheck Autopilot</h2>
+            <p class="section-desc">Enter your paycheck and instantly see how to split it. Updates automatically based on LOW / NORMAL / HIGH logic.</p>
+            <div class="autopilot-grid">
+                <div class="autopilot-input-card">
+                    <label class="ap-label">This Paycheck Amount</label>
+                    <input type="number" id="paycheckInput" class="paycheck-input" placeholder="0.00" step="0.01" value="1413.38">
+                    <div id="scenarioBadge" class="scenario-badge normal">🟡 NORMAL — Balanced</div>
+                    <div class="paycheck-stats">
+                        <div class="ps-item">
+                            <span>Avg Paycheck</span>
+                            <strong id="apAvgCheck">$1,413.38</strong>
+                        </div>
+                        <div class="ps-item">
+                            <span>Avg Monthly</span>
+                            <strong id="apAvgMonthly">$2,826.76</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="autopilot-allocations">
+                    <div class="alloc-row fixed-bills">
+                        <div class="alloc-info">
+                            <span class="alloc-icon">🏠</span>
+                            <span class="alloc-name">Fixed Bills (half/mo)</span>
+                        </div>
+                        <span class="alloc-amount" id="ap-bills">$790.50</span>
+                    </div>
+                    <div class="alloc-row car-extra">
+                        <div class="alloc-info">
+                            <span class="alloc-icon">🚗</span>
+                            <span class="alloc-name">Extra Car Payment</span>
+                        </div>
+                        <span class="alloc-amount" id="ap-carextra">$150.00</span>
+                    </div>
+                    <div class="alloc-row savings-alloc">
+                        <div class="alloc-info">
+                            <span class="alloc-icon">💾</span>
+                            <span class="alloc-name">Savings Buffer</span>
+                        </div>
+                        <span class="alloc-amount" id="ap-savings">$75.00</span>
+                    </div>
+                    <div class="alloc-row travel-alloc">
+                        <div class="alloc-info">
+                            <span class="alloc-icon">✈️</span>
+                            <span class="alloc-name">Travel Fund</span>
+                        </div>
+                        <span class="alloc-amount" id="ap-travel">$100.00</span>
+                    </div>
+                    <div class="alloc-row life-alloc">
+                        <div class="alloc-info">
+                            <span class="alloc-icon">🍔</span>
+                            <span class="alloc-name">Life / Personal</span>
+                        </div>
+                        <span class="alloc-amount" id="ap-life">$300.00</span>
+                    </div>
+                    <div class="alloc-row business-alloc">
+                        <div class="alloc-info">
+                            <span class="alloc-icon">📈</span>
+                            <span class="alloc-name">Business / Invest</span>
+                        </div>
+                        <span class="alloc-amount" id="ap-business">$100.00</span>
+                    </div>
+                    <div class="alloc-row overflow-alloc">
+                        <div class="alloc-info">
+                            <span class="alloc-icon">💰</span>
+                            <span class="alloc-name">Overflow / Unallocated</span>
+                        </div>
+                        <span class="alloc-amount" id="ap-overflow">$0.00</span>
+                    </div>
+                    <div class="alloc-row total-alloc">
+                        <div class="alloc-info">
+                            <span class="alloc-icon"></span>
+                            <span class="alloc-name"><strong>Total Allocated</strong></span>
+                        </div>
+                        <span class="alloc-amount" id="ap-total"><strong>$1,413.38</strong></span>
+                    </div>
+                </div>
+                <div class="autopilot-rules">
+                    <h4>🚨 Autopilot Rules</h4>
+                    <ul>
+                        <li class="rule-low">🔴 <strong>LOW (&lt;$1,300):</strong> Survival mode. Cover bills, $50 car extra only.</li>
+                        <li class="rule-normal">🟡 <strong>NORMAL ($1,300–$1,650):</strong> Balanced. Fund life + $150 extra car.</li>
+                        <li class="rule-high">🟢 <strong>HIGH (&gt;$1,650):</strong> Attack mode. Max car payment + invest.</li>
+                        <li class="rule-floor">🏦 <strong>NEVER</strong> let savings drop below $1,000.</li>
+                        <li class="rule-extra">💥 Extra/3rd paychecks → car loan principal. Always.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- 🚗 CAR LOAN TRACKER -->
+        <section class="budget-section loan-section">
+            <h2>🚗 Car Loan Tracker</h2>
+            <p class="section-desc">2020 Tesla Model 3 Long Range AWD — Track payoff progress and simulate refinancing.</p>
+            <div class="loan-grid">
+                <div class="loan-inputs">
+                    <h4>Loan Details <span class="editable-hint">(tap to edit)</span></h4>
+                    <div class="loan-field">
+                        <label>Current Balance ($)</label>
+                        <input type="number" id="loanBalance" class="loan-input" value="21800" step="0.01">
+                    </div>
+                    <div class="loan-field">
+                        <label>APR (%)</label>
+                        <input type="number" id="loanAPR" class="loan-input" value="18.35" step="0.01">
+                    </div>
+                    <div class="loan-field">
+                        <label>Base Monthly Payment ($)</label>
+                        <input type="number" id="loanPayment" class="loan-input" value="513.46" step="0.01">
+                    </div>
+                    <div class="loan-field">
+                        <label>Extra Monthly Payment ($)</label>
+                        <input type="number" id="loanExtra" class="loan-input" value="200" step="0.01">
+                    </div>
+                    <div class="loan-field">
+                        <label>Remaining Months (original)</label>
+                        <input type="number" id="loanMonths" class="loan-input" value="72">
+                    </div>
+                    <button id="calcLoanBtn" class="btn btn-primary" style="margin-top:12px;width:100%">🔄 Recalculate</button>
+                </div>
+                <div class="loan-results">
+                    <h4>Payoff Metrics</h4>
+                    <div class="loan-metric">
+                        <span>Monthly Total (base + extra)</span>
+                        <strong id="lr-totalPayment" class="metric-green">$713.46</strong>
+                    </div>
+                    <div class="loan-metric">
+                        <span>Payoff Time (min only)</span>
+                        <strong id="lr-payoffMin" class="metric-red">72.0 mo</strong>
+                    </div>
+                    <div class="loan-metric">
+                        <span>Payoff Time (w/ extra)</span>
+                        <strong id="lr-payoffExtra" class="metric-green">—</strong>
+                    </div>
+                    <div class="loan-metric">
+                        <span>Payoff in Years (w/ extra)</span>
+                        <strong id="lr-payoffYears" class="metric-green">—</strong>
+                    </div>
+                    <div class="loan-metric">
+                        <span>Total Interest (min only)</span>
+                        <strong id="lr-interestMin" class="metric-red">—</strong>
+                    </div>
+                    <div class="loan-metric">
+                        <span>Total Interest (w/ extra)</span>
+                        <strong id="lr-interestExtra" class="metric-green">—</strong>
+                    </div>
+                    <div class="loan-metric highlight-metric">
+                        <span>💰 Interest Saved</span>
+                        <strong id="lr-interestSaved" class="metric-green">—</strong>
+                    </div>
+                </div>
+                <div class="loan-refi">
+                    <h4>🔁 Refinance Simulation</h4>
+                    <div class="refi-grid">
+                        <div class="refi-col current">
+                            <div class="refi-header">Current 18.35%</div>
+                            <div class="refi-item"><span>Payment</span><strong id="refi-curPayment">—</strong></div>
+                            <div class="refi-item"><span>Total Interest</span><strong id="refi-curInterest">—</strong></div>
+                        </div>
+                        <div class="refi-col target">
+                            <div class="refi-header">DCU Target 8%</div>
+                            <div class="refi-item"><span>Payment</span><strong id="refi-newPayment">—</strong></div>
+                            <div class="refi-item"><span>Total Interest</span><strong id="refi-newInterest">—</strong></div>
+                        </div>
+                    </div>
+                    <div class="refi-savings">
+                        <span>You save monthly</span><strong id="refi-monthlySavings">—</strong>
+                    </div>
+                    <div class="refi-savings">
+                        <span>Total interest saved</span><strong id="refi-totalSavings">—</strong>
+                    </div>
+                    <div class="refi-note">📅 Apply to DCU at month 4–6. Target 7–10% APR. No prepayment penalty on current loan.</div>
+                </div>
+            </div>
+            <!-- Amortization first 12 months -->
+            <div class="amort-section">
+                <h4>📅 Amortization — First 12 Months (w/ Extra Payment)</h4>
+                <div class="table-container">
+                    <table id="amortTable">
+                        <thead>
+                            <tr>
+                                <th>Month</th>
+                                <th>Base</th>
+                                <th>Extra</th>
+                                <th>Interest</th>
+                                <th>Principal</th>
+                                <th>Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody id="amortBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 💾 SAVINGS & GOALS -->
+        <section class="budget-section savings-section">
+            <h2>💾 Savings & Goals</h2>
+            <p class="section-desc">Track your savings floor, travel fund, and growth. Floor is $1,000 — never go below it.</p>
+            <div class="savings-grid">
+                <div class="savings-accounts">
+                    <h4>Savings Positions</h4>
+                    <div class="sav-account" id="sav-total-card">
+                        <div class="sav-header">
+                            <span class="sav-icon">🏦</span>
+                            <span class="sav-name">Total Savings</span>
+                            <span class="sav-status" id="sav-total-status">✅ Above Floor</span>
+                        </div>
+                        <div class="sav-values">
+                            <input type="number" class="sav-input" id="sav-total" value="2100" step="0.01">
+                            <span class="sav-floor">Floor: $1,000</span>
+                        </div>
+                    </div>
+                    <div class="sav-account sav-travel">
+                        <div class="sav-header">
+                            <span class="sav-icon">✈️</span>
+                            <span class="sav-name">Travel Fund (Puerto Rico)</span>
+                            <span class="sav-status" id="sav-travel-status">⚠️ Building...</span>
+                        </div>
+                        <div class="sav-values">
+                            <input type="number" class="sav-input" id="sav-travel-amt" value="300" step="0.01">
+                            <span class="sav-floor">Goal: $700</span>
+                        </div>
+                    </div>
+                    <div class="sav-account sav-business">
+                        <div class="sav-header">
+                            <span class="sav-icon">📈</span>
+                            <span class="sav-name">Business / GL Studio</span>
+                            <span class="sav-status" id="sav-biz-status">📈 Building</span>
+                        </div>
+                        <div class="sav-values">
+                            <input type="number" class="sav-input" id="sav-biz-amt" value="0" step="0.01">
+                            <span class="sav-floor">Goal: $500</span>
+                        </div>
+                    </div>
+                    <div class="sav-account sav-overflow">
+                        <div class="sav-header">
+                            <span class="sav-icon">💰</span>
+                            <span class="sav-name">Overflow / Flex</span>
+                        </div>
+                        <div class="sav-values">
+                            <input type="number" class="sav-input" id="sav-overflow-amt" value="800" step="0.01">
+                            <span class="sav-floor">Deploy to car loan</span>
+                        </div>
+                    </div>
+                    <button id="saveSavingsBtn" class="btn btn-primary" style="margin-top:14px;width:100%">💾 Save Balances</button>
+                </div>
+                <div class="trip-budget">
+                    <h4>✈️ Puerto Rico Trip Budget (May)</h4>
+                    <div class="trip-item booked">
+                        <span>🏠 Airbnb</span>
+                        <span class="trip-status">✅ Already Booked</span>
+                        <span class="trip-cost">$0</span>
+                    </div>
+                    <div class="trip-item">
+                        <span>✈️ Flight (BOS→SJU RT)</span>
+                        <span></span>
+                        <input type="number" class="trip-input" id="trip-flight" value="350">
+                    </div>
+                    <div class="trip-item">
+                        <span>🍽️ Food & Activities</span>
+                        <span></span>
+                        <input type="number" class="trip-input" id="trip-food" value="350">
+                    </div>
+                    <div class="trip-item">
+                        <span>🆘 Buffer</span>
+                        <span></span>
+                        <input type="number" class="trip-input" id="trip-buffer" value="100">
+                    </div>
+                    <div class="trip-total">
+                        <span>Trip Total</span>
+                        <strong id="trip-total-amt">$800</strong>
+                    </div>
+                    <div class="trip-total">
+                        <span>Savings After Trip</span>
+                        <strong id="trip-after-savings">$1,300</strong>
+                    </div>
+                    <div class="trip-floor-check" id="trip-floor-check">✅ Still above $1,000 floor</div>
+                </div>
+                <div class="savings-projection">
+                    <h4>📈 12-Month Savings Projection</h4>
+                    <div class="proj-input-row">
+                        <label>Monthly Add ($)</label>
+                        <input type="number" id="proj-monthly-add" value="150" class="loan-input">
+                    </div>
+                    <div class="table-container" style="max-height:280px;overflow-y:auto;">
+                        <table id="projTable">
+                            <thead>
+                                <tr><th>Month</th><th>Add</th><th>Balance</th><th>Floor</th></tr>
+                            </thead>
+                            <tbody id="projBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <section class="summary-section">
             <h2>12 Month Summary</h2>
             <div class="table-wrapper">
