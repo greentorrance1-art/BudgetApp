@@ -189,191 +189,183 @@
 
         <!-- ⚡ PAYCHECK AUTOPILOT -->
         <section class="budget-section autopilot-section">
-            <h2>⚡ Paycheck Autopilot</h2>
-            <p class="section-desc">Enter your paycheck and instantly see how to split it. Updates automatically based on LOW / NORMAL / HIGH logic.</p>
-            <div class="autopilot-grid">
-                <div class="autopilot-input-card">
-                    <label class="ap-label">This Paycheck Amount</label>
-                    <input type="number" id="paycheckInput" class="paycheck-input" placeholder="0.00" step="0.01" value="1413.38">
-                    <div id="scenarioBadge" class="scenario-badge normal">🟡 NORMAL — Balanced</div>
-                    <div class="paycheck-stats">
-                        <div class="ps-item">
-                            <span>Avg Paycheck</span>
-                            <strong id="apAvgCheck">$1,413.38</strong>
-                        </div>
-                        <div class="ps-item">
-                            <span>Avg Monthly</span>
-                            <strong id="apAvgMonthly">$2,826.76</strong>
-                        </div>
+            <div class="section-header-row">
+                <div>
+                    <h2>⚡ Paycheck Autopilot</h2>
+                    <p class="section-desc">Enter your paycheck — your split calculates instantly.</p>
+                </div>
+                <div id="scenarioBadge" class="scenario-badge normal">🟡 NORMAL</div>
+            </div>
+
+            <div class="ap-top-row">
+                <div class="ap-input-block">
+                    <label class="field-label">This Paycheck Amount</label>
+                    <div class="big-input-wrap">
+                        <span class="big-input-prefix">$</span>
+                        <input type="number" id="paycheckInput" class="big-input" placeholder="0.00" step="0.01" value="1413.38">
                     </div>
                 </div>
-                <div class="autopilot-allocations">
-                    <div class="alloc-row fixed-bills">
-                        <div class="alloc-info">
-                            <span class="alloc-icon">🏠</span>
-                            <span class="alloc-name">Fixed Bills (half/mo)</span>
-                        </div>
-                        <span class="alloc-amount" id="ap-bills">$790.50</span>
-                    </div>
-                    <div class="alloc-row car-extra">
-                        <div class="alloc-info">
-                            <span class="alloc-icon">🚗</span>
-                            <span class="alloc-name">Extra Car Payment</span>
-                        </div>
-                        <span class="alloc-amount" id="ap-carextra">$150.00</span>
-                    </div>
-                    <div class="alloc-row savings-alloc">
-                        <div class="alloc-info">
-                            <span class="alloc-icon">💾</span>
-                            <span class="alloc-name">Savings Buffer</span>
-                        </div>
-                        <span class="alloc-amount" id="ap-savings">$75.00</span>
-                    </div>
-                    <div class="alloc-row travel-alloc">
-                        <div class="alloc-info">
-                            <span class="alloc-icon">✈️</span>
-                            <span class="alloc-name">Travel Fund</span>
-                        </div>
-                        <span class="alloc-amount" id="ap-travel">$100.00</span>
-                    </div>
-                    <div class="alloc-row life-alloc">
-                        <div class="alloc-info">
-                            <span class="alloc-icon">🍔</span>
-                            <span class="alloc-name">Life / Personal</span>
-                        </div>
-                        <span class="alloc-amount" id="ap-life">$300.00</span>
-                    </div>
-                    <div class="alloc-row business-alloc">
-                        <div class="alloc-info">
-                            <span class="alloc-icon">📈</span>
-                            <span class="alloc-name">Business / Invest</span>
-                        </div>
-                        <span class="alloc-amount" id="ap-business">$100.00</span>
-                    </div>
-                    <div class="alloc-row overflow-alloc">
-                        <div class="alloc-info">
-                            <span class="alloc-icon">💰</span>
-                            <span class="alloc-name">Overflow / Unallocated</span>
-                        </div>
-                        <span class="alloc-amount" id="ap-overflow">$0.00</span>
-                    </div>
-                    <div class="alloc-row total-alloc">
-                        <div class="alloc-info">
-                            <span class="alloc-icon"></span>
-                            <span class="alloc-name"><strong>Total Allocated</strong></span>
-                        </div>
-                        <span class="alloc-amount" id="ap-total"><strong>$1,413.38</strong></span>
-                    </div>
+                <div class="ap-stat-pill"><span>Avg Check</span><strong id="apAvgCheck">—</strong></div>
+                <div class="ap-stat-pill"><span>Avg Monthly</span><strong id="apAvgMonthly">—</strong></div>
+            </div>
+
+            <div class="alloc-cards">
+                <div class="alloc-card gray-card">
+                    <div class="ac-icon">🏠</div>
+                    <div class="ac-label">Fixed Bills</div>
+                    <div class="ac-amount" id="ap-bills">—</div>
+                    <div class="ac-sub">half of monthly</div>
                 </div>
-                <div class="autopilot-rules">
-                    <h4>🚨 Autopilot Rules</h4>
-                    <ul>
-                        <li class="rule-low">🔴 <strong>LOW (&lt;$1,300):</strong> Survival mode. Cover bills, $50 car extra only.</li>
-                        <li class="rule-normal">🟡 <strong>NORMAL ($1,300–$1,650):</strong> Balanced. Fund life + $150 extra car.</li>
-                        <li class="rule-high">🟢 <strong>HIGH (&gt;$1,650):</strong> Attack mode. Max car payment + invest.</li>
-                        <li class="rule-floor">🏦 <strong>NEVER</strong> let savings drop below $1,000.</li>
-                        <li class="rule-extra">💥 Extra/3rd paychecks → car loan principal. Always.</li>
-                    </ul>
+                <div class="alloc-card red-card">
+                    <div class="ac-icon">🚗</div>
+                    <div class="ac-label">Extra Car Payment</div>
+                    <div class="ac-amount" id="ap-carextra">—</div>
+                    <div class="ac-sub">attack the debt</div>
                 </div>
+                <div class="alloc-card blue-card">
+                    <div class="ac-icon">💾</div>
+                    <div class="ac-label">Savings Buffer</div>
+                    <div class="ac-amount" id="ap-savings">—</div>
+                    <div class="ac-sub">never go below $1K</div>
+                </div>
+                <div class="alloc-card yellow-card">
+                    <div class="ac-icon">✈️</div>
+                    <div class="ac-label">Travel Fund</div>
+                    <div class="ac-amount" id="ap-travel">—</div>
+                    <div class="ac-sub">vacation stack</div>
+                </div>
+                <div class="alloc-card orange-card">
+                    <div class="ac-icon">🍔</div>
+                    <div class="ac-label">Life / Personal</div>
+                    <div class="ac-amount" id="ap-life">—</div>
+                    <div class="ac-sub">food, fun, flex</div>
+                </div>
+                <div class="alloc-card green-card">
+                    <div class="ac-icon">📈</div>
+                    <div class="ac-label">Business / Invest</div>
+                    <div class="ac-amount" id="ap-business">—</div>
+                    <div class="ac-sub">Green Lion Studio</div>
+                </div>
+                <div class="alloc-card purple-card">
+                    <div class="ac-icon">💰</div>
+                    <div class="ac-label">Overflow</div>
+                    <div class="ac-amount" id="ap-overflow">—</div>
+                    <div class="ac-sub">→ extra to car loan</div>
+                </div>
+            </div>
+
+            <div class="ap-rules-row">
+                <div class="ap-rule rule-low">🔴 <strong>LOW &lt;$1,300</strong> — Bills + $50 car only</div>
+                <div class="ap-rule rule-normal">🟡 <strong>NORMAL $1,300–$1,650</strong> — Balanced split</div>
+                <div class="ap-rule rule-high">🟢 <strong>HIGH &gt;$1,650</strong> — Attack mode, max debt</div>
+                <div class="ap-rule rule-floor">🏦 <strong>Floor rule:</strong> Never drop below $1,000 saved</div>
             </div>
         </section>
 
         <!-- 🚗 CAR LOAN TRACKER -->
         <section class="budget-section loan-section">
             <h2>🚗 Car Loan Tracker</h2>
-            <p class="section-desc">2020 Tesla Model 3 Long Range AWD — Track payoff progress and simulate refinancing.</p>
-            <div class="loan-grid">
-                <div class="loan-inputs">
-                    <h4>Loan Details <span class="editable-hint">(tap to edit)</span></h4>
-                    <div class="loan-field">
-                        <label>Current Balance ($)</label>
-                        <input type="number" id="loanBalance" class="loan-input" value="21800" step="0.01">
-                    </div>
-                    <div class="loan-field">
-                        <label>APR (%)</label>
-                        <input type="number" id="loanAPR" class="loan-input" value="18.35" step="0.01">
-                    </div>
-                    <div class="loan-field">
-                        <label>Base Monthly Payment ($)</label>
-                        <input type="number" id="loanPayment" class="loan-input" value="513.46" step="0.01">
-                    </div>
-                    <div class="loan-field">
-                        <label>Extra Monthly Payment ($)</label>
-                        <input type="number" id="loanExtra" class="loan-input" value="200" step="0.01">
-                    </div>
-                    <div class="loan-field">
-                        <label>Remaining Months (original)</label>
-                        <input type="number" id="loanMonths" class="loan-input" value="72">
-                    </div>
-                    <button id="calcLoanBtn" class="btn btn-primary" style="margin-top:12px;width:100%">🔄 Recalculate</button>
-                </div>
-                <div class="loan-results">
-                    <h4>Payoff Metrics</h4>
-                    <div class="loan-metric">
-                        <span>Monthly Total (base + extra)</span>
-                        <strong id="lr-totalPayment" class="metric-green">$713.46</strong>
-                    </div>
-                    <div class="loan-metric">
-                        <span>Payoff Time (min only)</span>
-                        <strong id="lr-payoffMin" class="metric-red">72.0 mo</strong>
-                    </div>
-                    <div class="loan-metric">
-                        <span>Payoff Time (w/ extra)</span>
-                        <strong id="lr-payoffExtra" class="metric-green">—</strong>
-                    </div>
-                    <div class="loan-metric">
-                        <span>Payoff in Years (w/ extra)</span>
-                        <strong id="lr-payoffYears" class="metric-green">—</strong>
-                    </div>
-                    <div class="loan-metric">
-                        <span>Total Interest (min only)</span>
-                        <strong id="lr-interestMin" class="metric-red">—</strong>
-                    </div>
-                    <div class="loan-metric">
-                        <span>Total Interest (w/ extra)</span>
-                        <strong id="lr-interestExtra" class="metric-green">—</strong>
-                    </div>
-                    <div class="loan-metric highlight-metric">
-                        <span>💰 Interest Saved</span>
-                        <strong id="lr-interestSaved" class="metric-green">—</strong>
-                    </div>
-                </div>
-                <div class="loan-refi">
-                    <h4>🔁 Refinance Simulation</h4>
-                    <div class="refi-grid">
-                        <div class="refi-col current">
-                            <div class="refi-header">Current 18.35%</div>
-                            <div class="refi-item"><span>Payment</span><strong id="refi-curPayment">—</strong></div>
-                            <div class="refi-item"><span>Total Interest</span><strong id="refi-curInterest">—</strong></div>
+            <p class="section-desc">2020 Tesla Model 3 Long Range AWD — 18.35% APR. Refi target: DCU at 8%.</p>
+
+            <div class="loan-top-grid">
+                <!-- Inputs -->
+                <div class="loan-card">
+                    <div class="loan-card-title">Loan Details</div>
+                    <div class="loan-field-row">
+                        <div class="loan-field">
+                            <label class="field-label">Balance ($)</label>
+                            <input type="number" id="loanBalance" class="field-input" value="21800" step="0.01">
                         </div>
-                        <div class="refi-col target">
-                            <div class="refi-header">DCU Target 8%</div>
-                            <div class="refi-item"><span>Payment</span><strong id="refi-newPayment">—</strong></div>
-                            <div class="refi-item"><span>Total Interest</span><strong id="refi-newInterest">—</strong></div>
+                        <div class="loan-field">
+                            <label class="field-label">APR (%)</label>
+                            <input type="number" id="loanAPR" class="field-input" value="18.35" step="0.01">
                         </div>
                     </div>
-                    <div class="refi-savings">
-                        <span>You save monthly</span><strong id="refi-monthlySavings">—</strong>
+                    <div class="loan-field-row">
+                        <div class="loan-field">
+                            <label class="field-label">Base Payment ($)</label>
+                            <input type="number" id="loanPayment" class="field-input" value="513.46" step="0.01">
+                        </div>
+                        <div class="loan-field">
+                            <label class="field-label">Extra Payment ($)</label>
+                            <input type="number" id="loanExtra" class="field-input" value="200" step="0.01">
+                        </div>
                     </div>
-                    <div class="refi-savings">
-                        <span>Total interest saved</span><strong id="refi-totalSavings">—</strong>
+                    <div class="loan-field-row">
+                        <div class="loan-field">
+                            <label class="field-label">Original Term (mo)</label>
+                            <input type="number" id="loanMonths" class="field-input" value="72">
+                        </div>
+                        <div class="loan-field" style="justify-content:flex-end;align-items:flex-end;display:flex;">
+                            <button id="calcLoanBtn" class="btn btn-primary" style="width:100%;height:44px;">🔄 Recalc</button>
+                        </div>
                     </div>
-                    <div class="refi-note">📅 Apply to DCU at month 4–6. Target 7–10% APR. No prepayment penalty on current loan.</div>
+                </div>
+
+                <!-- Payoff Metrics -->
+                <div class="loan-card">
+                    <div class="loan-card-title">Payoff Metrics</div>
+                    <div class="metric-pair">
+                        <div class="mpair-item bad">
+                            <div class="mpair-label">Min Only Payoff</div>
+                            <div class="mpair-value" id="lr-payoffMin">—</div>
+                        </div>
+                        <div class="mpair-item good">
+                            <div class="mpair-label">With Extra Payoff</div>
+                            <div class="mpair-value" id="lr-payoffExtra">—</div>
+                        </div>
+                    </div>
+                    <div class="metric-pair" style="margin-top:12px;">
+                        <div class="mpair-item bad">
+                            <div class="mpair-label">Interest (min only)</div>
+                            <div class="mpair-value" id="lr-interestMin">—</div>
+                        </div>
+                        <div class="mpair-item good">
+                            <div class="mpair-label">Interest (w/ extra)</div>
+                            <div class="mpair-value" id="lr-interestExtra">—</div>
+                        </div>
+                    </div>
+                    <div class="interest-saved-banner">
+                        <span>💰 You Save</span>
+                        <strong id="lr-interestSaved">—</strong>
+                        <span>in interest</span>
+                    </div>
+                </div>
+
+                <!-- Refi Sim -->
+                <div class="loan-card refi-card">
+                    <div class="loan-card-title">🔁 Refinance Simulation (60 mo)</div>
+                    <div class="refi-compare">
+                        <div class="refi-side current-side">
+                            <div class="refi-rate-label">Current 18.35%</div>
+                            <div class="refi-big-num" id="refi-curPayment">—</div>
+                            <div class="refi-sub">/month</div>
+                            <div class="refi-interest" id="refi-curInterest">— total interest</div>
+                        </div>
+                        <div class="refi-vs">VS</div>
+                        <div class="refi-side target-side">
+                            <div class="refi-rate-label">DCU 8%</div>
+                            <div class="refi-big-num" id="refi-newPayment">—</div>
+                            <div class="refi-sub">/month</div>
+                            <div class="refi-interest" id="refi-newInterest">— total interest</div>
+                        </div>
+                    </div>
+                    <div class="refi-savings-row">
+                        <div class="refi-save-pill"><span>Monthly savings</span><strong id="refi-monthlySavings">—</strong></div>
+                        <div class="refi-save-pill highlight-pill"><span>Total saved</span><strong id="refi-totalSavings">—</strong></div>
+                    </div>
+                    <p class="refi-tip">📅 Apply to DCU months 4–6. No prepayment penalty.</p>
                 </div>
             </div>
-            <!-- Amortization first 12 months -->
+
+            <!-- Amortization -->
             <div class="amort-section">
-                <h4>📅 Amortization — First 12 Months (w/ Extra Payment)</h4>
+                <div class="amort-title">📅 First 12 Months — Amortization Schedule (Base + Extra)</div>
                 <div class="table-container">
                     <table id="amortTable">
                         <thead>
                             <tr>
-                                <th>Month</th>
-                                <th>Base</th>
-                                <th>Extra</th>
-                                <th>Interest</th>
-                                <th>Principal</th>
-                                <th>Balance</th>
+                                <th>Month</th><th>Base</th><th>Extra</th><th>Interest</th><th>Principal</th><th>Balance</th>
                             </tr>
                         </thead>
                         <tbody id="amortBody"></tbody>
@@ -385,101 +377,143 @@
         <!-- 💾 SAVINGS & GOALS -->
         <section class="budget-section savings-section">
             <h2>💾 Savings & Goals</h2>
-            <p class="section-desc">Track your savings floor, travel fund, and growth. Floor is $1,000 — never go below it.</p>
-            <div class="savings-grid">
-                <div class="savings-accounts">
-                    <h4>Savings Positions</h4>
-                    <div class="sav-account" id="sav-total-card">
-                        <div class="sav-header">
-                            <span class="sav-icon">🏦</span>
-                            <span class="sav-name">Total Savings</span>
-                            <span class="sav-status" id="sav-total-status">✅ Above Floor</span>
-                        </div>
-                        <div class="sav-values">
-                            <input type="number" class="sav-input" id="sav-total" value="2100" step="0.01">
-                            <span class="sav-floor">Floor: $1,000</span>
-                        </div>
+            <p class="section-desc">Track every bucket. Floor is $1,000 — never go below it.</p>
+
+            <!-- Savings buckets -->
+            <div class="sav-buckets-row">
+                <div class="sav-bucket primary-bucket">
+                    <div class="sav-bucket-icon">🏦</div>
+                    <div class="sav-bucket-label">Total Savings</div>
+                    <div class="sav-bucket-input-wrap">
+                        <span class="sav-dollar">$</span>
+                        <input type="number" class="sav-bucket-input" id="sav-total" value="2100" step="0.01">
                     </div>
-                    <div class="sav-account sav-travel">
-                        <div class="sav-header">
-                            <span class="sav-icon">✈️</span>
-                            <span class="sav-name">Travel Fund (Puerto Rico)</span>
-                            <span class="sav-status" id="sav-travel-status">⚠️ Building...</span>
-                        </div>
-                        <div class="sav-values">
-                            <input type="number" class="sav-input" id="sav-travel-amt" value="300" step="0.01">
-                            <span class="sav-floor">Goal: $700</span>
-                        </div>
-                    </div>
-                    <div class="sav-account sav-business">
-                        <div class="sav-header">
-                            <span class="sav-icon">📈</span>
-                            <span class="sav-name">Business / GL Studio</span>
-                            <span class="sav-status" id="sav-biz-status">📈 Building</span>
-                        </div>
-                        <div class="sav-values">
-                            <input type="number" class="sav-input" id="sav-biz-amt" value="0" step="0.01">
-                            <span class="sav-floor">Goal: $500</span>
-                        </div>
-                    </div>
-                    <div class="sav-account sav-overflow">
-                        <div class="sav-header">
-                            <span class="sav-icon">💰</span>
-                            <span class="sav-name">Overflow / Flex</span>
-                        </div>
-                        <div class="sav-values">
-                            <input type="number" class="sav-input" id="sav-overflow-amt" value="800" step="0.01">
-                            <span class="sav-floor">Deploy to car loan</span>
-                        </div>
-                    </div>
-                    <button id="saveSavingsBtn" class="btn btn-primary" style="margin-top:14px;width:100%">💾 Save Balances</button>
+                    <div class="sav-bucket-status" id="sav-total-status">✅ Above Floor</div>
+                    <div class="sav-bucket-note">Floor: $1,000</div>
                 </div>
-                <div class="trip-budget">
-                    <h4>✈️ Puerto Rico Trip Budget (May)</h4>
-                    <div class="trip-item booked">
-                        <span>🏠 Airbnb</span>
-                        <span class="trip-status">✅ Already Booked</span>
-                        <span class="trip-cost">$0</span>
+                <div class="sav-bucket travel-bucket">
+                    <div class="sav-bucket-icon">✈️</div>
+                    <div class="sav-bucket-label">Travel Fund</div>
+                    <div class="sav-bucket-input-wrap">
+                        <span class="sav-dollar">$</span>
+                        <input type="number" class="sav-bucket-input" id="sav-travel-amt" value="300" step="0.01">
                     </div>
-                    <div class="trip-item">
-                        <span>✈️ Flight (BOS→SJU RT)</span>
-                        <span></span>
-                        <input type="number" class="trip-input" id="trip-flight" value="350">
-                    </div>
-                    <div class="trip-item">
-                        <span>🍽️ Food & Activities</span>
-                        <span></span>
-                        <input type="number" class="trip-input" id="trip-food" value="350">
-                    </div>
-                    <div class="trip-item">
-                        <span>🆘 Buffer</span>
-                        <span></span>
-                        <input type="number" class="trip-input" id="trip-buffer" value="100">
-                    </div>
-                    <div class="trip-total">
-                        <span>Trip Total</span>
-                        <strong id="trip-total-amt">$800</strong>
-                    </div>
-                    <div class="trip-total">
-                        <span>Savings After Trip</span>
-                        <strong id="trip-after-savings">$1,300</strong>
-                    </div>
-                    <div class="trip-floor-check" id="trip-floor-check">✅ Still above $1,000 floor</div>
+                    <div class="sav-bucket-status" id="sav-travel-status">⚠️ Building...</div>
+                    <div class="sav-bucket-note">Goal: $700</div>
                 </div>
-                <div class="savings-projection">
-                    <h4>📈 12-Month Savings Projection</h4>
-                    <div class="proj-input-row">
-                        <label>Monthly Add ($)</label>
-                        <input type="number" id="proj-monthly-add" value="150" class="loan-input">
+                <div class="sav-bucket biz-bucket">
+                    <div class="sav-bucket-icon">📈</div>
+                    <div class="sav-bucket-label">GL Studio</div>
+                    <div class="sav-bucket-input-wrap">
+                        <span class="sav-dollar">$</span>
+                        <input type="number" class="sav-bucket-input" id="sav-biz-amt" value="0" step="0.01">
                     </div>
-                    <div class="table-container" style="max-height:280px;overflow-y:auto;">
-                        <table id="projTable">
-                            <thead>
-                                <tr><th>Month</th><th>Add</th><th>Balance</th><th>Floor</th></tr>
-                            </thead>
-                            <tbody id="projBody"></tbody>
-                        </table>
+                    <div class="sav-bucket-status" id="sav-biz-status">📈 Building</div>
+                    <div class="sav-bucket-note">Goal: $500</div>
+                </div>
+                <div class="sav-bucket overflow-bucket">
+                    <div class="sav-bucket-icon">💰</div>
+                    <div class="sav-bucket-label">Overflow / Flex</div>
+                    <div class="sav-bucket-input-wrap">
+                        <span class="sav-dollar">$</span>
+                        <input type="number" class="sav-bucket-input" id="sav-overflow-amt" value="800" step="0.01">
                     </div>
+                    <div class="sav-bucket-status">💥 Deploy to loan</div>
+                    <div class="sav-bucket-note">Extra → car principal</div>
+                </div>
+            </div>
+            <div style="text-align:center;margin: 4px 0 28px;">
+                <button id="saveSavingsBtn" class="btn btn-primary save-bal-btn">💾 Save All Balances</button>
+            </div>
+
+            <!-- Two vacation planners side by side -->
+            <div class="trips-row">
+                <!-- Trip 1 -->
+                <div class="trip-card trip1-card">
+                    <div class="trip-card-header">
+                        <span class="trip-num">Trip 1</span>
+                        <input type="text" class="trip-location-input" id="trip1-location" value="Puerto Rico 🇵🇷" placeholder="Destination">
+                    </div>
+                    <div class="trip-fields">
+                        <div class="trip-field-row">
+                            <label>🏠 Accommodation</label>
+                            <div class="trip-field-right">
+                                <input type="number" class="trip-num-input" id="trip-bnb" value="0" step="0.01">
+                                <input type="text" class="trip-note-input" id="trip-bnb-note" value="Already Booked ✅" placeholder="note">
+                            </div>
+                        </div>
+                        <div class="trip-field-row">
+                            <label>✈️ Flight</label>
+                            <input type="number" class="trip-num-input" id="trip-flight" value="350" step="0.01">
+                        </div>
+                        <div class="trip-field-row">
+                            <label>🍽️ Food & Activities</label>
+                            <input type="number" class="trip-num-input" id="trip-food" value="350" step="0.01">
+                        </div>
+                        <div class="trip-field-row">
+                            <label>🆘 Buffer</label>
+                            <input type="number" class="trip-num-input" id="trip-buffer" value="100" step="0.01">
+                        </div>
+                    </div>
+                    <div class="trip-totals">
+                        <div class="trip-total-row"><span>Trip Total</span><strong id="trip1-total">$800</strong></div>
+                        <div class="trip-total-row"><span>Savings After Trip</span><strong id="trip1-after">$1,300</strong></div>
+                    </div>
+                    <div class="trip-floor-badge" id="trip1-floor">✅ Still above $1,000 floor</div>
+                </div>
+
+                <!-- Trip 2 -->
+                <div class="trip-card trip2-card">
+                    <div class="trip-card-header">
+                        <span class="trip-num">Trip 2</span>
+                        <input type="text" class="trip-location-input" id="trip2-location" value="TBD 🌍" placeholder="Destination">
+                    </div>
+                    <div class="trip-fields">
+                        <div class="trip-field-row">
+                            <label>🏠 Accommodation</label>
+                            <div class="trip-field-right">
+                                <input type="number" class="trip-num-input" id="trip2-bnb" value="0" step="0.01">
+                                <input type="text" class="trip-note-input" id="trip2-bnb-note" value="" placeholder="booked? note">
+                            </div>
+                        </div>
+                        <div class="trip-field-row">
+                            <label>✈️ Flight</label>
+                            <input type="number" class="trip-num-input" id="trip2-flight" value="0" step="0.01">
+                        </div>
+                        <div class="trip-field-row">
+                            <label>🍽️ Food & Activities</label>
+                            <input type="number" class="trip-num-input" id="trip2-food" value="0" step="0.01">
+                        </div>
+                        <div class="trip-field-row">
+                            <label>🆘 Buffer</label>
+                            <input type="number" class="trip-num-input" id="trip2-buffer" value="0" step="0.01">
+                        </div>
+                    </div>
+                    <div class="trip-totals">
+                        <div class="trip-total-row"><span>Trip Total</span><strong id="trip2-total">$0</strong></div>
+                        <div class="trip-total-row"><span>Savings After Both Trips</span><strong id="trip2-after">—</strong></div>
+                    </div>
+                    <div class="trip-floor-badge" id="trip2-floor">—</div>
+                </div>
+            </div>
+
+            <!-- Projection -->
+            <div class="proj-card">
+                <div class="proj-card-header">
+                    <div>
+                        <div class="loan-card-title">📈 12-Month Savings Projection</div>
+                        <p class="section-desc" style="margin:0;">Adjust monthly contribution to see your savings grow.</p>
+                    </div>
+                    <div class="proj-add-wrap">
+                        <label class="field-label">Monthly Add ($)</label>
+                        <input type="number" id="proj-monthly-add" value="150" class="field-input" style="width:120px;">
+                    </div>
+                </div>
+                <div class="proj-table-wrap">
+                    <table id="projTable">
+                        <thead><tr><th>Month</th><th>+ Added</th><th>Balance</th><th>Floor Check</th></tr></thead>
+                        <tbody id="projBody"></tbody>
+                    </table>
                 </div>
             </div>
         </section>
