@@ -332,6 +332,10 @@ function updateOverview(data) {
     const savingsAct = incomeActTotal - expenseActTotal;
     const savingsDiff = savingsAct - savingsEst;
 
+    // Pull actual savings balance from Savings & Goals input if available
+    const savTotalEl = document.getElementById('sav-total');
+    const realSavingsAct = savTotalEl ? (parseFloat(savTotalEl.value) || savingsAct) : savingsAct;
+
     document.getElementById('overviewIncomeEst').textContent = formatCurrency(incomeEstTotal);
     document.getElementById('overviewIncomeAct').textContent = formatCurrency(incomeActTotal);
     document.getElementById('overviewIncomeDiff').textContent = formatCurrency(incomeDiffTotal);
@@ -343,12 +347,12 @@ function updateOverview(data) {
     document.getElementById('overviewExpensesDiff').className = 'metric-value ' + (expenseDiffTotal <= 0 ? 'positive' : 'negative');
 
     document.getElementById('overviewSavingsEst').textContent = formatCurrency(savingsEst);
-    document.getElementById('overviewSavingsAct').textContent = formatCurrency(savingsAct);
-    document.getElementById('overviewSavingsDiff').textContent = formatCurrency(savingsDiff);
-    document.getElementById('overviewSavingsDiff').className = 'metric-value ' + (savingsDiff >= 0 ? 'positive' : 'negative');
+    document.getElementById('overviewSavingsAct').textContent = formatCurrency(realSavingsAct);
+    document.getElementById('overviewSavingsDiff').textContent = formatCurrency(realSavingsAct - savingsEst);
+    document.getElementById('overviewSavingsDiff').className = 'metric-value ' + ((realSavingsAct - savingsEst) >= 0 ? 'positive' : 'negative');
 
     const savingsRateEst = incomeEstTotal > 0 ? (savingsEst / incomeEstTotal * 100) : 0;
-    const savingsRateAct = incomeActTotal > 0 ? (savingsAct / incomeActTotal * 100) : 0;
+    const savingsRateAct = incomeActTotal > 0 ? (realSavingsAct / incomeActTotal * 100) : 0;
 
     document.getElementById('savingsRateEst').textContent = savingsRateEst.toFixed(1) + '%';
     document.getElementById('savingsRateAct').textContent = savingsRateAct.toFixed(1) + '%';
@@ -875,6 +879,9 @@ function setupEventListeners() {
         renderAutopilot();
     });
 
+    const apFixed = document.getElementById('ap-fixed-bills');
+    if (apFixed) apFixed.addEventListener('input', () => renderAutopilot());
+
     // ── Car Loan
     document.getElementById('calcLoanBtn').addEventListener('click', renderLoanCalc);
     ['loanBalance','loanAPR','loanPayment','loanExtra','loanMonths'].forEach(id => {
@@ -886,8 +893,22 @@ function setupEventListeners() {
      'trip-bnb','trip-flight','trip-food','trip-buffer',
      'trip2-bnb','trip2-flight','trip2-food','trip2-buffer',
      'proj-monthly-add'].forEach(id => {
-        document.getElementById(id).addEventListener('input', renderSavings);
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', renderSavings);
     });
+
+    // Sync sav-total → dashboard savings display live
+    const savTotalInput = document.getElementById('sav-total');
+    if (savTotalInput) {
+        savTotalInput.addEventListener('input', async () => {
+            const data = await loadData();
+            updateOverview(data);
+        });
+    }
+
+    // Projection start month dropdown
+    const projStart = document.getElementById('proj-start-month');
+    if (projStart) projStart.addEventListener('change', renderSavings);
 
     document.getElementById('saveSavingsBtn').addEventListener('click', async () => {
         const data = await loadData();
@@ -996,7 +1017,8 @@ function applyTheme(theme) {
 
 // ─── PAYCHECK AUTOPILOT ───────────────────────────────────────────────────────
 function calcAutopilot(amount) {
-    const FIXED_MONTHLY = 1581;
+    const el = document.getElementById('ap-fixed-bills');
+    const FIXED_MONTHLY = el ? (parseFloat(el.value) || 1581) : 1581;
     const halfFixed = FIXED_MONTHLY / 2;
     let carExtra, savings, travel, life, business;
 
@@ -1181,11 +1203,12 @@ function renderSavings() {
             projBody.innerHTML = '';
             let projBal = total;
             const mn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-            const now = new Date();
+            const startMonthEl = g('proj-start-month');
+            const startMonth = startMonthEl ? parseInt(startMonthEl.value) : new Date().getMonth();
             for (let i = 0; i < 12; i++) {
                 projBal += monthlyAdd;
                 const row = document.createElement('tr');
-                row.innerHTML = `<td>${mn[(now.getMonth()+i+1)%12]}</td><td class="positive">+${formatCurrency(monthlyAdd)}</td><td><strong>${formatCurrency(projBal)}</strong></td><td>${projBal>=FLOOR?'✅':'🚨'}</td>`;
+                row.innerHTML = `<td>${mn[(startMonth + i) % 12]}</td><td class="positive">+${formatCurrency(monthlyAdd)}</td><td><strong>${formatCurrency(projBal)}</strong></td><td>${projBal>=FLOOR?'✅':'🚨'}</td>`;
                 projBody.appendChild(row);
             }
         }
@@ -1207,6 +1230,8 @@ function saveSavingsData(data) {
             trip2Bnb: gv('trip2-bnb', 0), trip2BnbNote: gvs('trip2-bnb-note', ''),
             trip2Flight: gv('trip2-flight', 0), trip2Food: gv('trip2-food', 0),
             trip2Buffer: gv('trip2-buffer', 0), projMonthly: gv('proj-monthly-add', 150),
+            projStartMonth: gv('proj-start-month', new Date().getMonth()),
+            apFixedBills: gv('ap-fixed-bills', 1581),
         };
         data.loanData = {
             balance: gv('loanBalance', 21800), apr: gv('loanAPR', 18.35),
@@ -1231,6 +1256,8 @@ function loadPersistedExtras(data) {
             sv('trip2-bnb-note', s.trip2BnbNote); sv('trip2-flight', s.trip2Flight);
             sv('trip2-food', s.trip2Food); sv('trip2-buffer', s.trip2Buffer);
             sv('proj-monthly-add', s.projMonthly);
+            if (s.projStartMonth != null) sv('proj-start-month', s.projStartMonth);
+            if (s.apFixedBills   != null) sv('ap-fixed-bills',   s.apFixedBills);
         }
         if (data.loanData) {
             const l = data.loanData;
