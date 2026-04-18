@@ -860,3 +860,11 @@ tfoot td {
 }
 .proj-add-wrap { display: flex; flex-direction: column; gap: 4px; min-width: 140px; }
 .proj-table-wrap { padding: 16px 20px; max-height: 300px; overflow-y: auto; }
+
+/* ── Loan stat row ── */
+.lr-stat-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 0; border-bottom: 1px solid var(--border-color);
+    font-size: 13px; color: var(--text-muted);
+}
+.lr-val-green { font-size: 16px; font-weight: 700; color: #10b981; }
