@@ -205,6 +205,13 @@
                         <input type="number" id="paycheckInput" class="big-input" placeholder="0.00" step="0.01" value="1413.38">
                     </div>
                 </div>
+                <div class="ap-input-block">
+                    <label class="field-label">Total Fixed Monthly Bills</label>
+                    <div class="big-input-wrap" style="border-color:#6b7280;">
+                        <span class="big-input-prefix" style="color:#6b7280;border-color:rgba(107,114,128,0.3);">$</span>
+                        <input type="number" id="ap-fixed-bills" class="big-input" style="color:#6b7280;font-size:20px;" placeholder="1581" step="0.01" value="1581">
+                    </div>
+                </div>
                 <div class="ap-stat-pill"><span>Avg Check</span><strong id="apAvgCheck">—</strong></div>
                 <div class="ap-stat-pill"><span>Avg Monthly</span><strong id="apAvgMonthly">—</strong></div>
             </div>
@@ -511,6 +518,23 @@
                     <div>
                         <div class="loan-card-title">📈 12-Month Savings Projection</div>
                         <p class="section-desc" style="margin:0;">Adjust monthly contribution to see your savings grow.</p>
+                    </div>
+                    <div class="proj-add-wrap">
+                        <label class="field-label">Start Month</label>
+                        <select id="proj-start-month" class="selector" style="width:120px;">
+                            <option value="0">January</option>
+                            <option value="1">February</option>
+                            <option value="2">March</option>
+                            <option value="3">April</option>
+                            <option value="4" selected>May</option>
+                            <option value="5">June</option>
+                            <option value="6">July</option>
+                            <option value="7">August</option>
+                            <option value="8">September</option>
+                            <option value="9">October</option>
+                            <option value="10">November</option>
+                            <option value="11">December</option>
+                        </select>
                     </div>
                     <div class="proj-add-wrap">
                         <label class="field-label">Monthly Add ($)</label>
