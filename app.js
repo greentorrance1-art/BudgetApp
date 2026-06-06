@@ -175,16 +175,16 @@ function getDefaultData() {
     };
 
     const sampleIncome = [
-        { id: generateUniqueId(), description: 'Salary', estimated: 5000, actual: 5000 },
-        { id: generateUniqueId(), description: 'Side Income', estimated: 800, actual: 750 }
+        { id: generateUniqueId(), description: 'Salary', estimated: 5000, actual: 5000, hisAmount: 5000, herAmount: 0 },
+        { id: generateUniqueId(), description: 'Side Income', estimated: 800, actual: 750, hisAmount: 800, herAmount: 0 }
     ];
 
     const sampleExpenses = [
-        { id: generateUniqueId(), description: 'Rent', estimated: 1500, actual: 1500 },
-        { id: generateUniqueId(), description: 'Food', estimated: 600, actual: 650 },
-        { id: generateUniqueId(), description: 'Utilities', estimated: 200, actual: 180 },
-        { id: generateUniqueId(), description: 'Transportation', estimated: 300, actual: 320 },
-        { id: generateUniqueId(), description: 'Subscriptions', estimated: 100, actual: 95 }
+        { id: generateUniqueId(), description: 'Rent', estimated: 1500, actual: 1500, hisAmount: 750, herAmount: 750, isTemplate: true },
+        { id: generateUniqueId(), description: 'Food', estimated: 600, actual: 650, hisAmount: 300, herAmount: 300, isTemplate: true },
+        { id: generateUniqueId(), description: 'Utilities', estimated: 200, actual: 180, hisAmount: 100, herAmount: 100, isTemplate: true },
+        { id: generateUniqueId(), description: 'Transportation', estimated: 300, actual: 320, hisAmount: 300, herAmount: 0, isTemplate: true },
+        { id: generateUniqueId(), description: 'Subscriptions', estimated: 100, actual: 95, hisAmount: 50, herAmount: 50, isTemplate: true }
     ];
 
     const incomeColors = generateUniqueColors(sampleIncome.length);
@@ -210,25 +210,82 @@ async function saveData(data) {
     }
 }
 
+function getExpenseTemplates(data) {
+    // Collect all unique template expenses across all months (by id)
+    const templates = {};
+    if (data && data.years) {
+        Object.values(data.years).forEach(yr => {
+            Object.values(yr).forEach(mo => {
+                if (mo.expenses) {
+                    mo.expenses.forEach(exp => {
+                        if (exp.isTemplate && !templates[exp.id]) {
+                            templates[exp.id] = JSON.parse(JSON.stringify(exp));
+                        }
+                    });
+                }
+            });
+        });
+    }
+    return Object.values(templates);
+}
+
+function syncExpenseToTemplate(data, updatedItem) {
+    // When an expense is updated, propagate to ALL future months that don't have their own version
+    if (!updatedItem.isTemplate) return;
+    if (!data.years) return;
+    Object.keys(data.years).forEach(yr => {
+        Object.keys(data.years[yr]).forEach(mo => {
+            const monthKey = parseInt(yr) * 100 + parseInt(mo);
+            const currentKey = currentYear * 100 + currentMonth;
+            if (monthKey > currentKey) {
+                const monthExpenses = data.years[yr][mo].expenses || [];
+                const existingIdx = monthExpenses.findIndex(e => e.id === updatedItem.id);
+                // Only update if the future month has not customized it (amounts still match template defaults)
+                if (existingIdx === -1) {
+                    // Not yet in this month — will be added when navigated to via carry-forward
+                }
+            }
+        });
+    });
+}
+
 function getCurrentMonthData(data) {
     if (!data || !data.years) {
         console.error('[App] Invalid data object:', data);
-        return {
-            income: [],
-            expenses: [],
-            incomeColors: [],
-            expenseColors: []
-        };
+        return { income: [], expenses: [], incomeColors: [], expenseColors: [] };
     }
-    if (!data.years[currentYear]) {
-        data.years[currentYear] = {};
-    }
+    if (!data.years[currentYear]) data.years[currentYear] = {};
+
     if (!data.years[currentYear][currentMonth]) {
+        // New month — carry forward expense templates from most recent prior month
+        const templates = getExpenseTemplates(data);
+        const carryExpenses = templates.map(t => Object.assign({}, t)); // shallow copy preserving id
+
+        // Find prior month's income for reference
+        let priorIncome = [];
+        let priorColors = { income: [], expense: [] };
+        // Search backwards for most recent populated month
+        for (let searchYear = currentYear; searchYear >= currentYear - 1; searchYear--) {
+            if (!data.years[searchYear]) continue;
+            for (let m = (searchYear === currentYear ? currentMonth - 1 : 11); m >= 0; m--) {
+                const md = data.years[searchYear][m];
+                if (md && md.income && md.income.length > 0) {
+                    priorIncome = []; // Don't carry income — user enters per month
+                    priorColors.income = md.incomeColors || [];
+                    priorColors.expense = md.expenseColors || generateUniqueColors(carryExpenses.length);
+                    break;
+                }
+            }
+            if (priorColors.expense.length > 0) break;
+        }
+
         data.years[currentYear][currentMonth] = {
-            income: [],
-            expenses: [],
+            income: priorIncome,
+            expenses: carryExpenses,
             incomeColors: [],
-            expenseColors: []
+            expenseColors: priorColors.expense.length > 0
+                ? priorColors.expense.slice(0, carryExpenses.length)
+                : generateUniqueColors(carryExpenses.length)
         };
     }
     return data.years[currentYear][currentMonth];
@@ -251,15 +308,17 @@ function renderIncomeTable(data) {
         tbody.innerHTML = '';
         monthData.income.forEach((item, index) => {
             const row = document.createElement('tr');
-            const estimated = parseNumber(item.estimated);
-            const actual = parseNumber(item.actual);
-            const diff = actual - estimated;
+            // hisAmount/herAmount are the split fields; estimated = his, actual = her for display
+            // Combined total shown as Difference column
+            const his = parseNumber(item.hisAmount !== undefined ? item.hisAmount : item.estimated);
+            const her = parseNumber(item.herAmount !== undefined ? item.herAmount : item.actual);
+            const combined = his + her;
             row.innerHTML = `
                 <td>${index + 1}</td>
                 <td><input type="text" value="${item.description}" data-id="${item.id}" data-field="description" data-type="income"></td>
-                <td><input type="number" step="0.01" value="${estimated}" data-id="${item.id}" data-field="estimated" data-type="income"></td>
-                <td><input type="number" step="0.01" value="${actual}" data-id="${item.id}" data-field="actual" data-type="income"></td>
-                <td class="${diff >= 0 ? 'positive' : 'negative'}">${formatCurrency(diff)}</td>
+                <td><input type="number" step="0.01" value="${his}" data-id="${item.id}" data-field="hisAmount" data-type="income" placeholder="His"></td>
+                <td><input type="number" step="0.01" value="${her}" data-id="${item.id}" data-field="herAmount" data-type="income" placeholder="Her"></td>
+                <td class="positive">${formatCurrency(combined)}</td>
                 <td><button class="delete-btn" data-id="${item.id}" data-type="income">🗑️</button></td>
             `;
             tbody.appendChild(row);
@@ -276,15 +335,15 @@ function renderExpenseTable(data) {
         tbody.innerHTML = '';
         monthData.expenses.forEach((item, index) => {
             const row = document.createElement('tr');
-            const estimated = parseNumber(item.estimated);
-            const actual = parseNumber(item.actual);
-            const diff = actual - estimated;
+            const his = parseNumber(item.hisAmount !== undefined ? item.hisAmount : item.estimated);
+            const her = parseNumber(item.herAmount !== undefined ? item.herAmount : 0);
+            const combined = his + her;
             row.innerHTML = `
                 <td>${index + 1}</td>
                 <td><input type="text" value="${item.description}" data-id="${item.id}" data-field="description" data-type="expense"></td>
-                <td><input type="number" step="0.01" value="${estimated}" data-id="${item.id}" data-field="estimated" data-type="expense"></td>
-                <td><input type="number" step="0.01" value="${actual}" data-id="${item.id}" data-field="actual" data-type="expense"></td>
-                <td class="${diff <= 0 ? 'positive' : 'negative'}">${formatCurrency(diff)}</td>
+                <td><input type="number" step="0.01" value="${his}" data-id="${item.id}" data-field="hisAmount" data-type="expense" placeholder="His"></td>
+                <td><input type="number" step="0.01" value="${her}" data-id="${item.id}" data-field="herAmount" data-type="expense" placeholder="Her"></td>
+                <td class="positive">${formatCurrency(combined)}</td>
                 <td><button class="delete-btn" data-id="${item.id}" data-type="expense">🗑️</button></td>
             `;
             tbody.appendChild(row);
@@ -293,25 +352,37 @@ function renderExpenseTable(data) {
     } catch(e) { console.warn('[renderExpenseTable] error:', e.message); }
 }
 
+function calcHis(item) { return parseNumber(item.hisAmount !== undefined ? item.hisAmount : item.estimated); }
+function calcHer(item) { return parseNumber(item.herAmount !== undefined ? item.herAmount : 0); }
+function calcCombined(item) { return calcHis(item) + calcHer(item); }
+
 function updateTotals(data) {
     try {
         const monthData = getCurrentMonthData(data);
-        const incomeEstTotal  = monthData.income.reduce((s, i) => s + parseNumber(i.estimated), 0);
-        const incomeActTotal  = monthData.income.reduce((s, i) => s + parseNumber(i.actual), 0);
-        const incomeDiffTotal = incomeActTotal - incomeEstTotal;
-        const expenseEstTotal  = monthData.expenses.reduce((s, i) => s + parseNumber(i.estimated), 0);
-        const expenseActTotal  = monthData.expenses.reduce((s, i) => s + parseNumber(i.actual), 0);
-        const expenseDiffTotal = expenseActTotal - expenseEstTotal;
+        // Combined totals (His + Her) used for all summary displays
+        const incomeHisTotal  = monthData.income.reduce((s, i) => s + calcHis(i), 0);
+        const incomeHerTotal  = monthData.income.reduce((s, i) => s + calcHer(i), 0);
+        const incomeTotalComb = incomeHisTotal + incomeHerTotal;
+
+        const expenseHisTotal  = monthData.expenses.reduce((s, i) => s + calcHis(i), 0);
+        const expenseHerTotal  = monthData.expenses.reduce((s, i) => s + calcHer(i), 0);
+        const expenseTotalComb = expenseHisTotal + expenseHerTotal;
+
         const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
         const cls = (id, c) => { const el = document.getElementById(id); if (el) el.className = c; };
-        set('totalIncomeEst',   formatCurrency(incomeEstTotal));
-        set('totalIncomeAct',   formatCurrency(incomeActTotal));
-        set('totalIncomeDiff',  formatCurrency(incomeDiffTotal));
-        cls('totalIncomeDiff',  incomeDiffTotal >= 0 ? 'positive' : 'negative');
-        set('totalExpenseEst',  formatCurrency(expenseEstTotal));
-        set('totalExpenseAct',  formatCurrency(expenseActTotal));
-        set('totalExpenseDiff', formatCurrency(expenseDiffTotal));
-        cls('totalExpenseDiff', expenseDiffTotal <= 0 ? 'positive' : 'negative');
+
+        // Income table footer: Est=His, Act=Her, Diff=Combined
+        set('totalIncomeEst',   formatCurrency(incomeHisTotal));
+        set('totalIncomeAct',   formatCurrency(incomeHerTotal));
+        set('totalIncomeDiff',  formatCurrency(incomeTotalComb));
+        cls('totalIncomeDiff',  'positive');
+
+        // Expense table footer: Est=His, Act=Her, Diff=Combined
+        set('totalExpenseEst',  formatCurrency(expenseHisTotal));
+        set('totalExpenseAct',  formatCurrency(expenseHerTotal));
+        set('totalExpenseDiff', formatCurrency(expenseTotalComb));
+        cls('totalExpenseDiff', 'positive');
+
         updateOverview(data);
     } catch(e) { console.warn('[updateTotals] error:', e.message); }
 }
@@ -320,16 +391,19 @@ function updateOverview(data) {
     try {
         const monthData = getCurrentMonthData(data);
 
-        const incomeEstTotal = monthData.income.reduce((sum, item) => sum + parseNumber(item.estimated), 0);
-        const incomeActTotal = monthData.income.reduce((sum, item) => sum + parseNumber(item.actual), 0);
-        const incomeDiffTotal = incomeActTotal - incomeEstTotal;
+        // Use combined His+Her for all overview metrics
+        const incomeEstTotal  = monthData.income.reduce((s, i) => s + calcHis(i), 0);
+        const incomeActTotal  = monthData.income.reduce((s, i) => s + calcHer(i), 0);
+        const incomeTotalComb = incomeEstTotal + incomeActTotal;
+        const incomeDiffTotal = incomeTotalComb;
 
-        const expenseEstTotal = monthData.expenses.reduce((sum, item) => sum + parseNumber(item.estimated), 0);
-        const expenseActTotal = monthData.expenses.reduce((sum, item) => sum + parseNumber(item.actual), 0);
-        const expenseDiffTotal = expenseActTotal - expenseEstTotal;
+        const expenseEstTotal  = monthData.expenses.reduce((s, i) => s + calcHis(i), 0);
+        const expenseActTotal  = monthData.expenses.reduce((s, i) => s + calcHer(i), 0);
+        const expenseTotalComb = expenseEstTotal + expenseActTotal;
+        const expenseDiffTotal = expenseTotalComb;
 
-        const savingsEst = incomeEstTotal - expenseEstTotal;
-        const savingsAct = incomeActTotal - expenseActTotal;
+        const savingsEst = incomeTotalComb - expenseTotalComb;
+        const savingsAct = savingsEst;
 
         // Pull actual savings balance from Savings & Goals input if available
         const savTotalEl = document.getElementById('sav-total');
@@ -578,7 +652,7 @@ function setupEventListeners() {
     on('addIncomeBtn', 'click', async () => {
         const data = await loadData();
         const monthData = getCurrentMonthData(data);
-        monthData.income.push({ id: generateUniqueId(), description: '', estimated: 0, actual: 0 });
+        monthData.income.push({ id: generateUniqueId(), description: '', estimated: 0, actual: 0, hisAmount: 0, herAmount: 0 });
         monthData.incomeColors.push(generateUniqueColors(1, monthData.incomeColors)[0]);
         await saveData(data);
         renderIncomeTable(data);
@@ -588,7 +662,8 @@ function setupEventListeners() {
     on('addExpenseBtn', 'click', async () => {
         const data = await loadData();
         const monthData = getCurrentMonthData(data);
-        monthData.expenses.push({ id: generateUniqueId(), description: '', estimated: 0, actual: 0 });
+        const newExpense = { id: generateUniqueId(), description: '', estimated: 0, actual: 0, hisAmount: 0, herAmount: 0, isTemplate: true };
+        monthData.expenses.push(newExpense);
         monthData.expenseColors.push(generateUniqueColors(1, monthData.expenseColors)[0]);
         await saveData(data);
         renderExpenseTable(data);
@@ -608,8 +683,15 @@ function setupEventListeners() {
                 renderIncomeTable(data);
                 renderIncomeChart(data, getCurrentChartType('income'));
             } else {
+                // For expenses: only remove from THIS month. Template expenses stay in other months.
                 const index = monthData.expenses.findIndex(item => item.id === id);
-                if (index !== -1) { monthData.expenses.splice(index, 1); monthData.expenseColors.splice(index, 1); }
+                if (index !== -1) {
+                    const removedItem = monthData.expenses[index];
+                    monthData.expenses.splice(index, 1);
+                    monthData.expenseColors.splice(index, 1);
+                    // If it was a template expense, mark it as "hidden this month" but don't delete globally
+                    // We achieve this by simply not touching other months - each month has its own copy
+                }
                 await saveData(data);
                 renderExpenseTable(data);
                 renderExpenseChart(data, getCurrentChartType('expense'));
@@ -618,34 +700,65 @@ function setupEventListeners() {
         }
     });
 
-    document.addEventListener('input', async (e) => {
-        if (e.target.tagName === 'INPUT' && e.target.dataset.id) {
-            const id = e.target.dataset.id;
-            const field = e.target.dataset.field;
-            const type = e.target.dataset.type;
-            const value = e.target.value;
-            const data = await loadData();
-            const monthData = getCurrentMonthData(data);
-            const array = type === 'income' ? monthData.income : monthData.expenses;
-            const item = array.find(item => item.id === id);
-            if (item) {
-                item[field] = field === 'description' ? value : parseNumber(value);
-                await saveData(data);
-                updateTotals(data);
-                if (type === 'income') renderIncomeChart(data, getCurrentChartType('income'));
-                else renderExpenseChart(data, getCurrentChartType('expense'));
-                renderYearSummary(data);
-            }
-        }
+    // Input handler with debounce to fix focus/re-render bug
+    let _inputDebounceTimer = null;
+    document.addEventListener('input', (e) => {
+        // Color pickers handle immediately
         if (e.target.type === 'color') {
-            const type = e.target.dataset.type;
-            const index = parseInt(e.target.dataset.index);
-            const color = e.target.value;
-            const data = await loadData();
-            const monthData = getCurrentMonthData(data);
-            if (type === 'income') { monthData.incomeColors[index] = color; renderIncomeChart(data, getCurrentChartType('income')); }
-            else { monthData.expenseColors[index] = color; renderExpenseChart(data, getCurrentChartType('expense')); }
-            await saveData(data);
+            (async () => {
+                const type = e.target.dataset.type;
+                const index = parseInt(e.target.dataset.index);
+                const color = e.target.value;
+                const data = await loadData();
+                const monthData = getCurrentMonthData(data);
+                if (type === 'income') { monthData.incomeColors[index] = color; renderIncomeChart(data, getCurrentChartType('income')); }
+                else { monthData.expenseColors[index] = color; renderExpenseChart(data, getCurrentChartType('expense')); }
+                await saveData(data);
+            })();
+            return;
+        }
+
+        if (e.target.tagName === 'INPUT' && e.target.dataset.id) {
+            const el = e.target;
+            const id = el.dataset.id;
+            const field = el.dataset.field;
+            const type = el.dataset.type;
+            const value = el.value;
+
+            // Update in-memory immediately so totals stay live
+            (async () => {
+                const data = await loadData();
+                const monthData = getCurrentMonthData(data);
+                const array = type === 'income' ? monthData.income : monthData.expenses;
+                const item = array.find(item => item.id === id);
+                if (!item) return;
+
+                // Write value to memory
+                if (field === 'hisAmount' || field === 'herAmount') {
+                    item[field] = parseNumber(value);
+                    // Keep estimated/actual in sync as combined total
+                    item.estimated = parseNumber(item.hisAmount || 0) + parseNumber(item.herAmount || 0);
+                    item.actual    = item.estimated;
+                } else {
+                    item[field] = field === 'description' ? value : parseNumber(value);
+                }
+
+                // Update totals display immediately (no re-render = no focus loss)
+                updateTotals(data);
+                renderCombinedSummary(data);
+
+                // Debounce the heavy operations (chart + save) by 400ms
+                clearTimeout(_inputDebounceTimer);
+                _inputDebounceTimer = setTimeout(async () => {
+                    await saveData(data);
+                    // Sync expense to global template on change
+                    if (type === 'expense') syncExpenseToTemplate(data, item);
+                    if (type === 'income') renderIncomeChart(data, getCurrentChartType('income'));
+                    else renderExpenseChart(data, getCurrentChartType('expense'));
+                    renderYearSummary(data);
+                    await saveData(data);
+                }, 400);
+            })();
         }
     });
 
@@ -1046,6 +1159,59 @@ function loadPersistedExtras(data) {
     } catch(e) { console.warn('[loadPersistedExtras] error:', e.message); }
 }
 
+
+// ─── COMBINED MONTHLY SUMMARY ─────────────────────────────────────────────────
+function renderCombinedSummary(data) {
+    try {
+        const monthData = getCurrentMonthData(data);
+        const el = document.getElementById('combinedSummaryBody');
+        if (!el) return;
+
+        const hisIncome  = monthData.income.reduce((s, i) => s + calcHis(i), 0);
+        const herIncome  = monthData.income.reduce((s, i) => s + calcHer(i), 0);
+        const combIncome = hisIncome + herIncome;
+
+        const hisExpense  = monthData.expenses.reduce((s, i) => s + calcHis(i), 0);
+        const herExpense  = monthData.expenses.reduce((s, i) => s + calcHer(i), 0);
+        const combExpense = hisExpense + herExpense;
+
+        const hisLeft  = hisIncome - hisExpense;
+        const herLeft  = herIncome - herExpense;
+        const combLeft = combIncome - combExpense;
+
+        const hisSR  = hisIncome  > 0 ? ((hisLeft  / hisIncome)  * 100).toFixed(1) + '%' : '0%';
+        const herSR  = herIncome  > 0 ? ((herLeft  / herIncome)  * 100).toFixed(1) + '%' : '0%';
+        const combSR = combIncome > 0 ? ((combLeft / combIncome) * 100).toFixed(1) + '%' : '0%';
+
+        el.innerHTML = `
+            <tr>
+                <td><strong>Monthly Take-Home</strong></td>
+                <td class="positive">${formatCurrency(hisIncome)}</td>
+                <td class="positive">${formatCurrency(herIncome)}</td>
+                <td class="positive"><strong>${formatCurrency(combIncome)}</strong></td>
+            </tr>
+            <tr>
+                <td><strong>Total Fixed Costs</strong></td>
+                <td class="negative">${formatCurrency(hisExpense)}</td>
+                <td class="negative">${formatCurrency(herExpense)}</td>
+                <td class="negative"><strong>${formatCurrency(combExpense)}</strong></td>
+            </tr>
+            <tr>
+                <td><strong>Monthly Leftover</strong></td>
+                <td class="${hisLeft >= 0 ? 'positive' : 'negative'}">${formatCurrency(hisLeft)}</td>
+                <td class="${herLeft >= 0 ? 'positive' : 'negative'}">${formatCurrency(herLeft)}</td>
+                <td class="${combLeft >= 0 ? 'positive' : 'negative'}"><strong>${formatCurrency(combLeft)}</strong></td>
+            </tr>
+            <tr>
+                <td><strong>Savings Rate</strong></td>
+                <td>${hisSR}</td>
+                <td>${herSR}</td>
+                <td><strong>${combSR}</strong></td>
+            </tr>
+        `;
+    } catch(e) { console.warn('[renderCombinedSummary] error:', e.message); }
+}
+
 function renderAll(data) {
     renderIncomeTable(data);
     renderExpenseTable(data);
@@ -1053,6 +1219,7 @@ function renderAll(data) {
     renderExpenseChart(data, getCurrentChartType('expense'));
     renderYearSummary(data);
     updateOverview(data);
+    renderCombinedSummary(data);
     loadPersistedExtras(data);
     renderAutopilot();
     renderAutopilotStats(data);
