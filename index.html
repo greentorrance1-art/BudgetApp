@@ -120,9 +120,9 @@
                             <tr>
                                 <th>#</th>
                                 <th>Description</th>
-                                <th>Estimated</th>
-                                <th>Actual</th>
-                                <th>Difference</th>
+                                <th>His Income</th>
+                                <th>Her Income</th>
+                                <th>Combined</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -158,9 +158,9 @@
                             <tr>
                                 <th>#</th>
                                 <th>Description</th>
-                                <th>Estimated</th>
-                                <th>Actual</th>
-                                <th>Difference</th>
+                                <th>His Amount</th>
+                                <th>Her Amount</th>
+                                <th>Combined</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -184,6 +184,24 @@
                     </div>
                     <canvas id="expenseChart"></canvas>
                 </div>
+            </div>
+        </section>
+
+        <!-- Combined Monthly Summary -->
+        <section class="budget-section" style="margin-top:0;border-top:none;border-radius:0 0 12px 12px;">
+            <h2 style="font-size:16px;margin-bottom:14px;">Combined Cash Flow Summary</h2>
+            <div class="table-container">
+                <table style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>You (His)</th>
+                            <th>Her</th>
+                            <th>Combined</th>
+                        </tr>
+                    </thead>
+                    <tbody id="combinedSummaryBody"></tbody>
+                </table>
             </div>
         </section>
 
