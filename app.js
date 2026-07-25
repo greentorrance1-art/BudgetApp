@@ -26,6 +26,7 @@ const firebaseConfig = {
 let auth, db;
 let unsubscribe = null;
 let isSyncing = false;
+let lastSyncedDataJSON = null;
 
 function initFirebase() {
     console.log('[Firebase] Initializing from:', location.origin);
@@ -64,6 +65,7 @@ async function saveToFirestore(data) {
     try {
         console.log('[Firestore] Saving to: households/my-household/data/main');
         const docRef = db.collection('households').doc('my-household').collection('data').doc('main');
+        lastSyncedDataJSON = JSON.stringify(data);
         await docRef.set({
             homeBudgetData: data
         }, { merge: true });
@@ -78,9 +80,16 @@ function subscribeToFirestore(callback) {
     const docRef = db.collection('households').doc('my-household').collection('data').doc('main');
 
     unsubscribe = docRef.onSnapshot((docSnap) => {
+        // Skip the local (optimistic) echo of our own writes — Firestore fires the
+        // listener immediately on save, before the server confirms, which was
+        // triggering a full table re-render (and stealing input focus) on every keystroke pause.
+        if (docSnap.metadata.hasPendingWrites) return;
         if (docSnap.exists) {
             const data = docSnap.data();
             if (data && data.homeBudgetData) {
+                const incomingJSON = JSON.stringify(data.homeBudgetData);
+                // Also skip the server's acknowledgement of our own write (same data we just sent).
+                if (incomingJSON === lastSyncedDataJSON) return;
                 console.log('[Firestore] Real-time update received');
                 isSyncing = true;
                 callback(data.homeBudgetData);
@@ -257,34 +266,31 @@ function getCurrentMonthData(data) {
     if (!data.years[currentYear]) data.years[currentYear] = {};
 
     if (!data.years[currentYear][currentMonth]) {
-        // New month — carry forward expense templates from most recent prior month
-        const templates = getExpenseTemplates(data);
-        const carryExpenses = templates.map(t => Object.assign({}, t)); // shallow copy preserving id
-
-        // Find prior month's income for reference
-        let priorIncome = [];
-        let priorColors = { income: [], expense: [] };
-        // Search backwards for most recent populated month
-        for (let searchYear = currentYear; searchYear >= currentYear - 1; searchYear--) {
+        // New month — carry forward expenses from the most recent previous month only
+        // (not from anywhere in history), so a deletion in one month can't cause the
+        // same expense to reappear in a later month.
+        let carryExpenses = [];
+        let carryColors = [];
+        searchLoop:
+        for (let searchYear = currentYear; searchYear >= currentYear - 5; searchYear--) {
             if (!data.years[searchYear]) continue;
-            for (let m = (searchYear === currentYear ? currentMonth - 1 : 11); m >= 0; m--) {
+            const startMonth = (searchYear === currentYear) ? currentMonth - 1 : 11;
+            for (let m = startMonth; m >= 0; m--) {
                 const md = data.years[searchYear][m];
-                if (md && md.income && md.income.length > 0) {
-                    priorIncome = []; // Don't carry income — user enters per month
-                    priorColors.income = md.incomeColors || [];
-                    priorColors.expense = md.expenseColors || generateUniqueColors(carryExpenses.length);
-                    break;
+                if (md && md.expenses && md.expenses.length > 0) {
+                    carryExpenses = md.expenses.map(e => Object.assign({}, e)); // copy, preserving id
+                    carryColors = (md.expenseColors || []).slice(0, carryExpenses.length);
+                    break searchLoop;
                 }
             }
-            if (priorColors.expense.length > 0) break;
         }
 
         data.years[currentYear][currentMonth] = {
-            income: priorIncome,
+            income: [], // user enters income fresh each month
             expenses: carryExpenses,
             incomeColors: [],
-            expenseColors: priorColors.expense.length > 0
-                ? priorColors.expense.slice(0, carryExpenses.length)
+            expenseColors: carryColors.length === carryExpenses.length
+                ? carryColors
                 : generateUniqueColors(carryExpenses.length)
         };
     }
