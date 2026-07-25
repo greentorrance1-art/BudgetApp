@@ -493,6 +493,8 @@ function updateOverview(data) {
 
         // Total Savings (Actual) is the sum of all Savings Goals — not leftover income minus
         // expenses. Savings is tracked manually per goal, independent of the monthly budget.
+        // Until at least one goal has an amount entered, show blank instead of a misleading $0.00.
+        const hasGoalData = (data.savingsGoals || []).some(g => parseNumber(g.amount) !== 0);
         const realSavingsAct = (data.savingsGoals || []).reduce((s, g) => s + parseNumber(g.amount), 0);
 
         const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
@@ -509,22 +511,27 @@ function updateOverview(data) {
         cls('overviewExpensesDiff', 'metric-value ' + (expenseDiffTotal <= 0 ? 'positive' : 'negative'));
 
         set('overviewSavingsEst',   formatCurrency(savingsEst));
-        set('overviewSavingsAct',   formatCurrency(realSavingsAct));
-        set('overviewSavingsDiff',  formatCurrency(realSavingsAct - savingsEst));
-        cls('overviewSavingsDiff',  'metric-value ' + ((realSavingsAct - savingsEst) >= 0 ? 'positive' : 'negative'));
+        set('overviewSavingsAct',   hasGoalData ? formatCurrency(realSavingsAct) : '—');
+        set('overviewSavingsDiff',  hasGoalData ? formatCurrency(realSavingsAct - savingsEst) : '—');
+        cls('overviewSavingsDiff',  'metric-value ' + (!hasGoalData ? '' : ((realSavingsAct - savingsEst) >= 0 ? 'positive' : 'negative')));
 
         const savingsRateEst = incomeEstTotal > 0 ? (savingsEst / incomeEstTotal * 100) : 0;
         const savingsRateAct = incomeActTotal > 0 ? (realSavingsAct / incomeActTotal * 100) : 0;
 
         set('savingsRateEst', savingsRateEst.toFixed(1) + '%');
-        set('savingsRateAct', savingsRateAct.toFixed(1) + '%');
+        set('savingsRateAct', hasGoalData ? savingsRateAct.toFixed(1) + '%' : '—');
 
         const badge = document.getElementById('savingsHealthBadge');
         if (badge) {
-            badge.className = 'badge';
-            if (savingsRateAct >= 20)     { badge.textContent = 'Good';  badge.classList.add('good'); }
-            else if (savingsRateAct >= 10){ badge.textContent = 'Watch'; badge.classList.add('watch'); }
-            else                          { badge.textContent = 'Risk';  badge.classList.add('risk'); }
+            if (!hasGoalData) {
+                badge.className = 'badge';
+                badge.textContent = '—';
+            } else {
+                badge.className = 'badge';
+                if (savingsRateAct >= 20)     { badge.textContent = 'Good';  badge.classList.add('good'); }
+                else if (savingsRateAct >= 10){ badge.textContent = 'Watch'; badge.classList.add('watch'); }
+                else                          { badge.textContent = 'Risk';  badge.classList.add('risk'); }
+            }
         }
     } catch(e) { console.warn('[updateOverview] error:', e.message); }
 }
