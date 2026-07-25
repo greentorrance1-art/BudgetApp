@@ -835,6 +835,7 @@ function setupEventListeners() {
                 if (!item) return;
                 item[field] = field === 'name' ? value : parseNumber(value);
                 updateSavingsGoalsTotal(data);
+                if (field === 'amount') renderSavings();
                 clearTimeout(_goalDebounceTimer);
                 _goalDebounceTimer = setTimeout(async () => {
                     await saveData(data);
@@ -977,26 +978,11 @@ function setupEventListeners() {
         renderSavingsGoals(data);
     });
 
-    ['sav-total','sav-travel-amt','sav-biz-amt','sav-overflow-amt',
-     'trip-bnb','trip-flight','trip-food','trip-buffer',
+    ['trip-bnb','trip-flight','trip-food','trip-buffer',
      'trip2-bnb','trip2-flight','trip2-food','trip2-buffer',
      'proj-monthly-add'].forEach(id => on(id, 'input', renderSavings));
 
     on('proj-start-month', 'change', renderSavings);
-
-    on('sav-total', 'input', async () => {
-        const data = await loadData();
-        updateOverview(data);
-    });
-
-    on('saveSavingsBtn', 'click', async () => {
-        const data = await loadData();
-        saveSavingsData(data);
-        await saveData(data);
-        renderSavings();
-        const btn = document.getElementById('saveSavingsBtn');
-        if (btn) { btn.textContent = '✅ Saved!'; setTimeout(() => { btn.textContent = '💾 Save Balances'; }, 1500); }
-    });
 
     on('exportDataBtn', 'click', async () => {
         const data = await loadData();
@@ -1216,13 +1202,10 @@ function renderSavings() {
         const set = (id, val) => { const el = g(id); if (el) el.textContent = val; };
         const FLOOR = 1000;
 
-        const total     = gv('sav-total', 2100);
-        const travelAmt = gv('sav-travel-amt', 300);
-        const bizAmt    = gv('sav-biz-amt', 0);
-
-        set('sav-total-status',  total >= FLOOR  ? '✅ Above Floor' : '🚨 DANGER — Below Floor!');
-        set('sav-travel-status', travelAmt >= 700 ? '✅ Funded'     : '⚠️ Building...');
-        set('sav-biz-status',    bizAmt >= 500    ? '✅ Ready'      : '📈 Building');
+        // "Total Savings" now comes from the Savings Goals list (same figure shown at the
+        // top of the dashboard), since the old manual Total Savings bucket was removed.
+        const total = Array.from(document.querySelectorAll('.goal-amount-input'))
+            .reduce((s, el) => s + (parseFloat(el.value) || 0), 0);
 
         const bnb1 = gv('trip-bnb', 0); const flight1 = gv('trip-flight', 350);
         const food1 = gv('trip-food', 350); const buf1 = gv('trip-buffer', 100);
@@ -1274,8 +1257,6 @@ function saveSavingsData(data) {
         const gv  = (id, def) => { const el = document.getElementById(id); return el ? (parseFloat(el.value) || def) : def; };
         const gvs = (id, def) => { const el = document.getElementById(id); return el ? (el.value || def) : def; };
         data.savingsData = {
-            total: gv('sav-total', 2100), travel: gv('sav-travel-amt', 300),
-            biz: gv('sav-biz-amt', 0), overflow: gv('sav-overflow-amt', 800),
             trip1Location: gvs('trip1-location', 'Puerto Rico 🇵🇷'),
             tripBnb: gv('trip-bnb', 0), tripBnbNote: gvs('trip-bnb-note', ''),
             tripFlight: gv('trip-flight', 350), tripFood: gv('trip-food', 350),
@@ -1306,8 +1287,6 @@ function loadPersistedExtras(data) {
         const sv = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
         if (data.savingsData) {
             const s = data.savingsData;
-            sv('sav-total', s.total); sv('sav-travel-amt', s.travel);
-            sv('sav-biz-amt', s.biz); sv('sav-overflow-amt', s.overflow);
             sv('trip1-location', s.trip1Location); sv('trip-bnb', s.tripBnb);
             sv('trip-bnb-note', s.tripBnbNote); sv('trip-flight', s.tripFlight);
             sv('trip-food', s.tripFood); sv('trip-buffer', s.tripBuffer);
