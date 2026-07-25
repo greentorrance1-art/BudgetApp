@@ -180,7 +180,9 @@ async function loadData() {
 function getDefaultData() {
     const data = {
         theme: 'light',
-        years: {}
+        years: {},
+        savingsGoals: [],
+        autopilotLabels: {}
     };
 
     const sampleIncome = [
@@ -189,11 +191,11 @@ function getDefaultData() {
     ];
 
     const sampleExpenses = [
-        { id: generateUniqueId(), description: 'Rent', estimated: 1500, actual: 1500, hisAmount: 750, herAmount: 750, isTemplate: true },
-        { id: generateUniqueId(), description: 'Food', estimated: 600, actual: 650, hisAmount: 300, herAmount: 300, isTemplate: true },
-        { id: generateUniqueId(), description: 'Utilities', estimated: 200, actual: 180, hisAmount: 100, herAmount: 100, isTemplate: true },
-        { id: generateUniqueId(), description: 'Transportation', estimated: 300, actual: 320, hisAmount: 300, herAmount: 0, isTemplate: true },
-        { id: generateUniqueId(), description: 'Subscriptions', estimated: 100, actual: 95, hisAmount: 50, herAmount: 50, isTemplate: true }
+        { id: generateUniqueId(), description: 'Rent', estimated: 1500, actual: 1500, hisAmount: 750, herAmount: 750, fixed: true },
+        { id: generateUniqueId(), description: 'Food', estimated: 600, actual: 650, hisAmount: 300, herAmount: 300, fixed: false },
+        { id: generateUniqueId(), description: 'Utilities', estimated: 200, actual: 180, hisAmount: 100, herAmount: 100, fixed: true },
+        { id: generateUniqueId(), description: 'Transportation', estimated: 300, actual: 320, hisAmount: 300, herAmount: 0, fixed: false },
+        { id: generateUniqueId(), description: 'Subscriptions', estimated: 100, actual: 95, hisAmount: 50, herAmount: 50, fixed: true }
     ];
 
     const incomeColors = generateUniqueColors(sampleIncome.length);
@@ -219,45 +221,6 @@ async function saveData(data) {
     }
 }
 
-function getExpenseTemplates(data) {
-    // Collect all unique template expenses across all months (by id)
-    const templates = {};
-    if (data && data.years) {
-        Object.values(data.years).forEach(yr => {
-            Object.values(yr).forEach(mo => {
-                if (mo.expenses) {
-                    mo.expenses.forEach(exp => {
-                        if (exp.isTemplate && !templates[exp.id]) {
-                            templates[exp.id] = JSON.parse(JSON.stringify(exp));
-                        }
-                    });
-                }
-            });
-        });
-    }
-    return Object.values(templates);
-}
-
-function syncExpenseToTemplate(data, updatedItem) {
-    // When an expense is updated, propagate to ALL future months that don't have their own version
-    if (!updatedItem.isTemplate) return;
-    if (!data.years) return;
-    Object.keys(data.years).forEach(yr => {
-        Object.keys(data.years[yr]).forEach(mo => {
-            const monthKey = parseInt(yr) * 100 + parseInt(mo);
-            const currentKey = currentYear * 100 + currentMonth;
-            if (monthKey > currentKey) {
-                const monthExpenses = data.years[yr][mo].expenses || [];
-                const existingIdx = monthExpenses.findIndex(e => e.id === updatedItem.id);
-                // Only update if the future month has not customized it (amounts still match template defaults)
-                if (existingIdx === -1) {
-                    // Not yet in this month — will be added when navigated to via carry-forward
-                }
-            }
-        });
-    });
-}
-
 function getCurrentMonthData(data) {
     if (!data || !data.years) {
         console.error('[App] Invalid data object:', data);
@@ -266,9 +229,9 @@ function getCurrentMonthData(data) {
     if (!data.years[currentYear]) data.years[currentYear] = {};
 
     if (!data.years[currentYear][currentMonth]) {
-        // New month — carry forward expenses from the most recent previous month only
-        // (not from anywhere in history), so a deletion in one month can't cause the
-        // same expense to reappear in a later month.
+        // New month — carry forward only expenses marked Fixed (F) from the most recent
+        // previous month (not from anywhere in history), so a deletion in one month can't
+        // cause the same expense to reappear in a later month.
         let carryExpenses = [];
         let carryColors = [];
         searchLoop:
@@ -278,8 +241,12 @@ function getCurrentMonthData(data) {
             for (let m = startMonth; m >= 0; m--) {
                 const md = data.years[searchYear][m];
                 if (md && md.expenses && md.expenses.length > 0) {
-                    carryExpenses = md.expenses.map(e => Object.assign({}, e)); // copy, preserving id
-                    carryColors = (md.expenseColors || []).slice(0, carryExpenses.length);
+                    const fixedExpenses = md.expenses
+                        .map((e, i) => ({ e, i }))
+                        .filter(pair => pair.e.fixed);
+                    carryExpenses = fixedExpenses.map(pair => Object.assign({}, pair.e)); // copy, preserving id
+                    const srcColors = md.expenseColors || [];
+                    carryColors = fixedExpenses.map(pair => srcColors[pair.i]).filter(c => c);
                     break searchLoop;
                 }
             }
@@ -350,16 +317,130 @@ function renderExpenseTable(data) {
                 <td><input type="number" step="0.01" value="${his}" data-id="${item.id}" data-field="hisAmount" data-type="expense" placeholder="His"></td>
                 <td><input type="number" step="0.01" value="${her}" data-id="${item.id}" data-field="herAmount" data-type="expense" placeholder="Her"></td>
                 <td class="positive">${formatCurrency(combined)}</td>
+                <td style="text-align:center;"><input type="checkbox" class="fixed-checkbox" data-id="${item.id}" title="Fixed — auto-carries to next month" ${item.fixed ? 'checked' : ''}></td>
                 <td><button class="delete-btn" data-id="${item.id}" data-type="expense">🗑️</button></td>
             `;
             tbody.appendChild(row);
         });
         updateTotals(data);
+        updateFixedBillsTotal(data);
     } catch(e) { console.warn('[renderExpenseTable] error:', e.message); }
 }
 
 function calcHis(item) { return parseNumber(item.hisAmount !== undefined ? item.hisAmount : item.estimated); }
 function calcHer(item) { return parseNumber(item.herAmount !== undefined ? item.herAmount : 0); }
+
+// ─── FIXED (F) EXPENSES ────────────────────────────────────────────────────────
+function computeFixedBillsTotal(data) {
+    const monthData = getCurrentMonthData(data);
+    return monthData.expenses.filter(e => e.fixed).reduce((s, e) => s + calcHis(e) + calcHer(e), 0);
+}
+
+function updateFixedBillsTotal(data) {
+    try {
+        const total = computeFixedBillsTotal(data);
+        const el = document.getElementById('ap-fixed-bills');
+        if (el) el.value = total.toFixed(2);
+        renderAutopilot();
+    } catch(e) { console.warn('[FixedBills] error:', e.message); }
+}
+
+// ─── SAVINGS GOALS ──────────────────────────────────────────────────────────────
+function renderSavingsGoals(data) {
+    try {
+        if (!data.savingsGoals) data.savingsGoals = [];
+        const container = document.getElementById('savingsGoalsList');
+        if (!container) return;
+        container.innerHTML = '';
+        data.savingsGoals.forEach(goal => {
+            const row = document.createElement('div');
+            row.className = 'goal-item';
+            row.innerHTML = `
+                <input type="text" class="field-input goal-name-input" value="${goal.name || ''}" placeholder="Goal name" data-id="${goal.id}" data-field="name" data-type="goal">
+                <div class="goal-amount-wrap">
+                    <span class="sav-dollar">$</span>
+                    <input type="number" class="field-input goal-amount-input" value="${parseNumber(goal.amount)}" step="0.01" data-id="${goal.id}" data-field="amount" data-type="goal">
+                </div>
+                <button class="delete-btn" data-id="${goal.id}" data-type="goal">🗑️</button>
+            `;
+            container.appendChild(row);
+        });
+        updateSavingsGoalsTotal(data);
+    } catch(e) { console.warn('[renderSavingsGoals] error:', e.message); }
+}
+
+function updateSavingsGoalsTotal(data) {
+    try {
+        const total = (data.savingsGoals || []).reduce((s, g) => s + parseNumber(g.amount), 0);
+        const el = document.getElementById('goalsGrandTotal');
+        if (el) el.textContent = formatCurrency(total);
+        updateOverview(data);
+    } catch(e) { console.warn('[SavingsGoalsTotal] error:', e.message); }
+}
+
+// ─── PAYCHECK AUTOPILOT — EDITABLE CATEGORY LABELS ─────────────────────────────
+function renderAutopilotLabels(data) {
+    try {
+        const labels = data.autopilotLabels || {};
+        document.querySelectorAll('.ac-label-input').forEach(inp => {
+            const key = inp.dataset.key;
+            if (key && labels[key] !== undefined) inp.value = labels[key];
+        });
+    } catch(e) { console.warn('[AutopilotLabels] error:', e.message); }
+}
+
+// ─── CREDIT CARD TRACKER ────────────────────────────────────────────────────────
+function renderCreditCard() {
+    try {
+        const g = id => document.getElementById(id);
+        const limit      = parseFloat(g('ccLimit')          && g('ccLimit').value)          || 0;
+        const balance     = Math.max(0, parseFloat(g('ccBalance') && g('ccBalance').value)   || 0);
+        const minPmt      = parseFloat(g('ccMinPayment')     && g('ccMinPayment').value)     || 0;
+        const targetPmt   = parseFloat(g('ccTargetPayment')  && g('ccTargetPayment').value)  || 0;
+        const extraPmt    = parseFloat(g('ccExtraPayment')   && g('ccExtraPayment').value)   || 0;
+
+        const set = (id, val) => { const el = g(id); if (el) el.textContent = val; };
+
+        set('cc-remaining', formatCurrency(balance));
+
+        // Simple straight-line payoff estimate (no APR modeled for the credit card tracker)
+        const totalMonthlyPmt = targetPmt + extraPmt;
+        const monthsMin   = (balance > 0 && minPmt > 0)          ? Math.ceil(balance / minPmt)         : 0;
+        const monthsExtra = (balance > 0 && totalMonthlyPmt > 0) ? Math.ceil(balance / totalMonthlyPmt) : 0;
+
+        set('cc-monthsMin',   balance <= 0 ? '0 mo' : (monthsMin   > 0 ? monthsMin   + ' mo' : '—'));
+        set('cc-monthsExtra', balance <= 0 ? '0 mo' : (monthsExtra > 0 ? monthsExtra + ' mo' : '—'));
+
+        if (balance <= 0) {
+            set('cc-payoffDate', 'Paid off 🎉');
+        } else if (monthsExtra > 0) {
+            const payoffDate = new Date();
+            payoffDate.setMonth(payoffDate.getMonth() + monthsExtra);
+            set('cc-payoffDate', payoffDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }));
+        } else {
+            set('cc-payoffDate', '—');
+        }
+
+        // Progress = share of the credit limit currently free (rises as balance is paid down)
+        const progressPct = limit > 0 ? Math.max(0, Math.min(100, ((limit - balance) / limit) * 100)) : 0;
+        const fill = g('cc-progress-fill');
+        if (fill) fill.style.width = progressPct.toFixed(1) + '%';
+
+        // Utilization
+        const utilPct = limit > 0 ? (balance / limit) * 100 : 0;
+        set('cc-utilPercent', utilPct.toFixed(1) + '%');
+        const badge = g('cc-utilBadge');
+        if (badge) {
+            if (utilPct < 10)      { badge.textContent = '🟢 Excellent'; badge.className = 'cc-util-badge cc-util-good'; }
+            else if (utilPct < 30) { badge.textContent = '🟡 Good';      badge.className = 'cc-util-badge cc-util-watch'; }
+            else                   { badge.textContent = '🔴 High';      badge.className = 'cc-util-badge cc-util-high'; }
+        }
+
+        set('cc-target10', formatCurrency(limit * 0.10));
+        set('cc-target5',  formatCurrency(limit * 0.05));
+        set('cc-target2',  formatCurrency(limit * 0.02));
+    } catch(e) { console.warn('[CreditCard] render error:', e.message); }
+}
 function calcCombined(item) { return calcHis(item) + calcHer(item); }
 
 function updateTotals(data) {
@@ -409,11 +490,10 @@ function updateOverview(data) {
         const expenseDiffTotal = expenseTotalComb;
 
         const savingsEst = incomeTotalComb - expenseTotalComb;
-        const savingsAct = savingsEst;
 
-        // Pull actual savings balance from Savings & Goals input if available
-        const savTotalEl = document.getElementById('sav-total');
-        const realSavingsAct = savTotalEl && savTotalEl.value !== '' ? (parseFloat(savTotalEl.value) || savingsAct) : savingsAct;
+        // Total Savings (Actual) is the sum of all Savings Goals — not leftover income minus
+        // expenses. Savings is tracked manually per goal, independent of the monthly budget.
+        const realSavingsAct = (data.savingsGoals || []).reduce((s, g) => s + parseNumber(g.amount), 0);
 
         const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
         const cls = (id, c)   => { const el = document.getElementById(id); if (el) el.className = c; };
@@ -668,7 +748,7 @@ function setupEventListeners() {
     on('addExpenseBtn', 'click', async () => {
         const data = await loadData();
         const monthData = getCurrentMonthData(data);
-        const newExpense = { id: generateUniqueId(), description: '', estimated: 0, actual: 0, hisAmount: 0, herAmount: 0, isTemplate: true };
+        const newExpense = { id: generateUniqueId(), description: '', estimated: 0, actual: 0, hisAmount: 0, herAmount: 0, fixed: false };
         monthData.expenses.push(newExpense);
         monthData.expenseColors.push(generateUniqueColors(1, monthData.expenseColors)[0]);
         await saveData(data);
@@ -681,6 +761,16 @@ function setupEventListeners() {
             const id = e.target.dataset.id;
             const type = e.target.dataset.type;
             const data = await loadData();
+
+            if (type === 'goal') {
+                if (!data.savingsGoals) data.savingsGoals = [];
+                const index = data.savingsGoals.findIndex(g => g.id === id);
+                if (index !== -1) data.savingsGoals.splice(index, 1);
+                await saveData(data);
+                renderSavingsGoals(data);
+                return;
+            }
+
             const monthData = getCurrentMonthData(data);
             if (type === 'income') {
                 const index = monthData.income.findIndex(item => item.id === id);
@@ -689,18 +779,17 @@ function setupEventListeners() {
                 renderIncomeTable(data);
                 renderIncomeChart(data, getCurrentChartType('income'));
             } else {
-                // For expenses: only remove from THIS month. Template expenses stay in other months.
+                // For expenses: only remove from THIS month. Fixed expenses stay in other months.
                 const index = monthData.expenses.findIndex(item => item.id === id);
                 if (index !== -1) {
-                    const removedItem = monthData.expenses[index];
                     monthData.expenses.splice(index, 1);
                     monthData.expenseColors.splice(index, 1);
-                    // If it was a template expense, mark it as "hidden this month" but don't delete globally
-                    // We achieve this by simply not touching other months - each month has its own copy
+                    // Each month has its own copy, so deleting here doesn't touch other months.
                 }
                 await saveData(data);
                 renderExpenseTable(data);
                 renderExpenseChart(data, getCurrentChartType('expense'));
+                updateFixedBillsTotal(data);
             }
             renderYearSummary(data);
         }
@@ -708,6 +797,7 @@ function setupEventListeners() {
 
     // Input handler with debounce to fix focus/re-render bug
     let _inputDebounceTimer = null;
+    let _goalDebounceTimer = null;
     document.addEventListener('input', (e) => {
         // Color pickers handle immediately
         if (e.target.type === 'color') {
@@ -720,6 +810,45 @@ function setupEventListeners() {
                 if (type === 'income') { monthData.incomeColors[index] = color; renderIncomeChart(data, getCurrentChartType('income')); }
                 else { monthData.expenseColors[index] = color; renderExpenseChart(data, getCurrentChartType('expense')); }
                 await saveData(data);
+            })();
+            return;
+        }
+
+        // Savings goal name/amount fields — update the live total without rebuilding the list
+        // (rebuilding on every keystroke is what causes inputs to lose focus while typing).
+        if (e.target.tagName === 'INPUT' && e.target.dataset.type === 'goal') {
+            const el = e.target;
+            const id = el.dataset.id;
+            const field = el.dataset.field;
+            const value = el.value;
+            (async () => {
+                const data = await loadData();
+                if (!data.savingsGoals) data.savingsGoals = [];
+                const item = data.savingsGoals.find(g => g.id === id);
+                if (!item) return;
+                item[field] = field === 'name' ? value : parseNumber(value);
+                updateSavingsGoalsTotal(data);
+                clearTimeout(_goalDebounceTimer);
+                _goalDebounceTimer = setTimeout(async () => {
+                    await saveData(data);
+                }, 400);
+            })();
+            return;
+        }
+
+        // Fixed (F) expense checkbox — must be checked before the generic dataset.id
+        // handler below, since the checkbox also carries data-id but no data-field.
+        if (e.target.type === 'checkbox' && e.target.classList.contains('fixed-checkbox')) {
+            (async () => {
+                const id = e.target.dataset.id;
+                const checked = e.target.checked;
+                const data = await loadData();
+                const monthData = getCurrentMonthData(data);
+                const item = monthData.expenses.find(x => x.id === id);
+                if (!item) return;
+                item.fixed = checked;
+                await saveData(data);
+                updateFixedBillsTotal(data);
             })();
             return;
         }
@@ -752,13 +881,12 @@ function setupEventListeners() {
                 // Update totals display immediately (no re-render = no focus loss)
                 updateTotals(data);
                 renderCombinedSummary(data);
+                if (type === 'expense' && item.fixed) updateFixedBillsTotal(data);
 
                 // Debounce the heavy operations (chart + save) by 400ms
                 clearTimeout(_inputDebounceTimer);
                 _inputDebounceTimer = setTimeout(async () => {
                     await saveData(data);
-                    // Sync expense to global template on change
-                    if (type === 'expense') syncExpenseToTemplate(data, item);
                     if (type === 'income') renderIncomeChart(data, getCurrentChartType('income'));
                     else renderExpenseChart(data, getCurrentChartType('expense'));
                     renderYearSummary(data);
@@ -818,6 +946,29 @@ function setupEventListeners() {
 
     on('calcLoanBtn', 'click', renderLoanCalc);
     ['loanBalance','loanAPR','loanPayment','loanExtra','loanMonths'].forEach(id => on(id, 'input', renderLoanCalc));
+
+    on('calcCCBtn', 'click', renderCreditCard);
+    ['ccLimit','ccBalance','ccMinPayment','ccTargetPayment','ccExtraPayment'].forEach(id => on(id, 'input', renderCreditCard));
+
+    // Editable Paycheck Autopilot category titles (amounts stay auto-calculated)
+    document.querySelectorAll('.ac-label-input').forEach(inp => {
+        inp.addEventListener('input', async (e) => {
+            const key = e.target.dataset.key;
+            if (!key) return;
+            const data = await loadData();
+            if (!data.autopilotLabels) data.autopilotLabels = {};
+            data.autopilotLabels[key] = e.target.value;
+            await saveData(data);
+        });
+    });
+
+    on('addGoalBtn', 'click', async () => {
+        const data = await loadData();
+        if (!data.savingsGoals) data.savingsGoals = [];
+        data.savingsGoals.push({ id: generateUniqueId(), name: '', amount: 0 });
+        await saveData(data);
+        renderSavingsGoals(data);
+    });
 
     ['sav-total','sav-travel-amt','sav-biz-amt','sav-overflow-amt',
      'trip-bnb','trip-flight','trip-food','trip-buffer',
@@ -1134,6 +1285,11 @@ function saveSavingsData(data) {
             payment: gv('loanPayment', 513.46), extra: gv('loanExtra', 200),
             months: gv('loanMonths', 72),
         };
+        data.creditCardData = {
+            limit: gv('ccLimit', 0), balance: gv('ccBalance', 0),
+            minPayment: gv('ccMinPayment', 0), targetPayment: gv('ccTargetPayment', 0),
+            extraPayment: gv('ccExtraPayment', 0),
+        };
         data.paycheckData = { amount: gv('paycheckInput', 1413.38) };
     } catch(e) { console.warn('[saveSavingsData] error:', e.message); }
 }
@@ -1160,6 +1316,12 @@ function loadPersistedExtras(data) {
             sv('loanBalance', l.balance); sv('loanAPR', l.apr);
             sv('loanPayment', l.payment); sv('loanExtra', l.extra);
             sv('loanMonths', l.months);
+        }
+        if (data.creditCardData) {
+            const c = data.creditCardData;
+            sv('ccLimit', c.limit); sv('ccBalance', c.balance);
+            sv('ccMinPayment', c.minPayment); sv('ccTargetPayment', c.targetPayment);
+            sv('ccExtraPayment', c.extraPayment);
         }
         if (data.paycheckData) sv('paycheckInput', data.paycheckData.amount);
     } catch(e) { console.warn('[loadPersistedExtras] error:', e.message); }
@@ -1224,12 +1386,15 @@ function renderAll(data) {
     renderIncomeChart(data, getCurrentChartType('income'));
     renderExpenseChart(data, getCurrentChartType('expense'));
     renderYearSummary(data);
+    renderSavingsGoals(data);
     updateOverview(data);
     renderCombinedSummary(data);
     loadPersistedExtras(data);
     renderAutopilot();
+    renderAutopilotLabels(data);
     renderAutopilotStats(data);
     renderLoanCalc();
+    renderCreditCard();
     renderSavings();
 }
 
