@@ -1266,7 +1266,6 @@ function saveSavingsData(data) {
             trip2Flight: gv('trip2-flight', 0), trip2Food: gv('trip2-food', 0),
             trip2Buffer: gv('trip2-buffer', 0), projMonthly: gv('proj-monthly-add', 150),
             projStartMonth: gv('proj-start-month', new Date().getMonth()),
-            apFixedBills: gv('ap-fixed-bills', 1581),
         };
         data.loanData = {
             balance: gv('loanBalance', 21800), apr: gv('loanAPR', 18.35),
@@ -1295,7 +1294,6 @@ function loadPersistedExtras(data) {
             sv('trip2-food', s.trip2Food); sv('trip2-buffer', s.trip2Buffer);
             sv('proj-monthly-add', s.projMonthly);
             if (s.projStartMonth != null) sv('proj-start-month', s.projStartMonth);
-            if (s.apFixedBills   != null) sv('ap-fixed-bills',   s.apFixedBills);
         }
         if (data.loanData) {
             const l = data.loanData;
@@ -1382,6 +1380,7 @@ function renderAll(data) {
     renderLoanCalc();
     renderCreditCard();
     renderSavings();
+    updateFixedBillsTotal(data); // must run last — it's computed, never a stale persisted value
 }
 
 async function initApp() {
