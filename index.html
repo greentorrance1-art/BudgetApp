@@ -161,6 +161,7 @@
                                 <th>His Amount</th>
                                 <th>Her Amount</th>
                                 <th>Combined</th>
+                                <th title="Fixed — auto-carries to next month">F</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -171,6 +172,7 @@
                                 <td><strong id="totalExpenseEst">$0.00</strong></td>
                                 <td><strong id="totalExpenseAct">$0.00</strong></td>
                                 <td><strong id="totalExpenseDiff">$0.00</strong></td>
+                                <td></td>
                                 <td></td>
                             </tr>
                         </tfoot>
@@ -227,7 +229,7 @@
                     <label class="field-label">Total Fixed Monthly Bills</label>
                     <div class="big-input-wrap" style="border-color:#6b7280;">
                         <span class="big-input-prefix" style="color:#6b7280;border-color:rgba(107,114,128,0.3);">$</span>
-                        <input type="number" id="ap-fixed-bills" class="big-input" style="color:#6b7280;font-size:20px;" placeholder="1581" step="0.01" value="1581">
+                        <input type="number" id="ap-fixed-bills" class="big-input" style="color:#6b7280;font-size:20px;" placeholder="1581" step="0.01" value="1581" readonly title="Auto-calculated from expenses marked F">
                     </div>
                 </div>
                 <div class="ap-stat-pill"><span>Avg Check</span><strong id="apAvgCheck">—</strong></div>
@@ -243,37 +245,37 @@
                 </div>
                 <div class="alloc-card red-card">
                     <div class="ac-icon">🚗</div>
-                    <div class="ac-label">Extra Car Payment</div>
+                    <input type="text" class="ac-label-input" data-key="carextra" value="Extra Car Payment">
                     <div class="ac-amount" id="ap-carextra">—</div>
                     <div class="ac-sub">attack the debt</div>
                 </div>
                 <div class="alloc-card blue-card">
                     <div class="ac-icon">💾</div>
-                    <div class="ac-label">Savings Buffer</div>
+                    <input type="text" class="ac-label-input" data-key="savings" value="Savings Buffer">
                     <div class="ac-amount" id="ap-savings">—</div>
                     <div class="ac-sub">never go below $1K</div>
                 </div>
                 <div class="alloc-card yellow-card">
                     <div class="ac-icon">✈️</div>
-                    <div class="ac-label">Travel Fund</div>
+                    <input type="text" class="ac-label-input" data-key="travel" value="Travel Fund">
                     <div class="ac-amount" id="ap-travel">—</div>
                     <div class="ac-sub">vacation stack</div>
                 </div>
                 <div class="alloc-card orange-card">
                     <div class="ac-icon">🍔</div>
-                    <div class="ac-label">Life / Personal</div>
+                    <input type="text" class="ac-label-input" data-key="life" value="Life / Personal">
                     <div class="ac-amount" id="ap-life">—</div>
                     <div class="ac-sub">food, fun, flex</div>
                 </div>
                 <div class="alloc-card green-card">
                     <div class="ac-icon">📈</div>
-                    <div class="ac-label">Business / Invest</div>
+                    <input type="text" class="ac-label-input" data-key="business" value="Business / Invest">
                     <div class="ac-amount" id="ap-business">—</div>
                     <div class="ac-sub">Green Lion Studio</div>
                 </div>
                 <div class="alloc-card purple-card">
                     <div class="ac-icon">💰</div>
-                    <div class="ac-label">Overflow</div>
+                    <input type="text" class="ac-label-input" data-key="overflow" value="Overflow">
                     <div class="ac-amount" id="ap-overflow">—</div>
                     <div class="ac-sub">→ extra to car loan</div>
                 </div>
@@ -407,6 +409,94 @@
             </div>
         </section>
 
+        <!-- 💳 CREDIT CARD TRACKER -->
+        <section class="budget-section cc-section">
+            <h2>💳 Credit Card Tracker</h2>
+            <p class="section-desc">Track balance, payoff progress, and utilization.</p>
+
+            <div class="loan-top-grid">
+                <div class="loan-card">
+                    <div class="loan-card-title">Card Details</div>
+                    <div class="loan-field-row">
+                        <div class="loan-field">
+                            <label class="field-label">Credit Limit ($)</label>
+                            <input type="number" id="ccLimit" class="field-input" value="10000" step="0.01">
+                        </div>
+                        <div class="loan-field">
+                            <label class="field-label">Current Balance ($)</label>
+                            <input type="number" id="ccBalance" class="field-input" value="0" step="0.01">
+                        </div>
+                    </div>
+                    <div class="loan-field-row">
+                        <div class="loan-field">
+                            <label class="field-label">Minimum Payment ($)</label>
+                            <input type="number" id="ccMinPayment" class="field-input" value="25" step="0.01">
+                        </div>
+                        <div class="loan-field">
+                            <label class="field-label">Target Monthly Payment ($)</label>
+                            <input type="number" id="ccTargetPayment" class="field-input" value="100" step="0.01">
+                        </div>
+                    </div>
+                    <div class="loan-field-row">
+                        <div class="loan-field">
+                            <label class="field-label">Extra Payment ($)</label>
+                            <input type="number" id="ccExtraPayment" class="field-input" value="0" step="0.01">
+                        </div>
+                        <div class="loan-field" style="justify-content:flex-end;align-items:flex-end;display:flex;">
+                            <button id="calcCCBtn" class="btn btn-primary" style="width:100%;height:44px;">🔄 Recalc</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="loan-card">
+                    <div class="loan-card-title">Payoff Progress</div>
+                    <div class="lr-stat-row">
+                        <span>Remaining Balance</span>
+                        <strong id="cc-remaining" class="lr-val-green">—</strong>
+                    </div>
+                    <div class="cc-progress-track">
+                        <div class="cc-progress-fill" id="cc-progress-fill" style="width:0%;"></div>
+                    </div>
+                    <div class="lr-stat-row" style="margin-top:10px;">
+                        <span>Estimated Payoff Date</span>
+                        <strong id="cc-payoffDate" class="lr-val-green">—</strong>
+                    </div>
+                    <div class="metric-pair" style="margin-top:8px;">
+                        <div class="mpair-item bad">
+                            <div class="mpair-label">Months (min only)</div>
+                            <div class="mpair-value" id="cc-monthsMin">—</div>
+                        </div>
+                        <div class="mpair-item good">
+                            <div class="mpair-label">Months (with extra)</div>
+                            <div class="mpair-value" id="cc-monthsExtra">—</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="loan-card">
+                    <div class="loan-card-title">📊 Credit Utilization</div>
+                    <div class="cc-util-display">
+                        <div class="cc-util-percent" id="cc-utilPercent">0%</div>
+                        <div class="cc-util-badge cc-util-good" id="cc-utilBadge">🟢 Excellent</div>
+                    </div>
+                    <div class="metric-pair" style="margin-top:14px;">
+                        <div class="mpair-item neutral">
+                            <div class="mpair-label">Target for &lt;10%</div>
+                            <div class="mpair-value" id="cc-target10">—</div>
+                        </div>
+                        <div class="mpair-item neutral">
+                            <div class="mpair-label">Target for &lt;5%</div>
+                            <div class="mpair-value" id="cc-target5">—</div>
+                        </div>
+                    </div>
+                    <div class="mpair-item neutral" style="margin-top:10px;">
+                        <div class="mpair-label">Target for &lt;2%</div>
+                        <div class="mpair-value" id="cc-target2">—</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- 💾 SAVINGS & GOALS -->
         <section class="budget-section savings-section">
             <h2>💾 Savings & Goals</h2>
@@ -527,6 +617,20 @@
                         <div class="trip-total-row"><span>Savings After Both Trips</span><strong id="trip2-after">—</strong></div>
                     </div>
                     <div class="trip-floor-badge" id="trip2-floor">—</div>
+                </div>
+            </div>
+
+            <!-- Savings Goals -->
+            <div class="goals-card">
+                <div class="loan-card-title">🎯 Savings Goals</div>
+                <p class="section-desc" style="margin:0 0 14px;">Track balances toward each goal. The combined total feeds Total Savings at the top of the dashboard.</p>
+                <div id="savingsGoalsList" class="goals-list"></div>
+                <div style="text-align:center;margin-top:12px;">
+                    <button id="addGoalBtn" class="btn btn-primary">+ Add Goal</button>
+                </div>
+                <div class="goals-total-row">
+                    <span>Total Saved (all goals)</span>
+                    <strong id="goalsGrandTotal">$0.00</strong>
                 </div>
             </div>
 
