@@ -949,14 +949,27 @@ function setupEventListeners() {
         renderExpenseChart(data, getCurrentChartType('expense'));
     });
 
-    on('paycheckInput',  'input', renderAutopilot);
+    // Paycheck / Loan / Credit Card / Trip & Projection fields don't live in the
+    // income/expense arrays, so they need their own debounced save — otherwise they
+    // only get persisted on a month/year switch, which looks like "it doesn't save."
+    let _extrasSaveTimer = null;
+    function saveExtrasDebounced() {
+        clearTimeout(_extrasSaveTimer);
+        _extrasSaveTimer = setTimeout(async () => {
+            const data = await loadData();
+            saveSavingsData(data);
+            await saveData(data);
+        }, 500);
+    }
+
+    on('paycheckInput',  'input', () => { renderAutopilot(); saveExtrasDebounced(); });
     on('ap-fixed-bills', 'input', renderAutopilot);
 
     on('calcLoanBtn', 'click', renderLoanCalc);
-    ['loanBalance','loanAPR','loanPayment','loanExtra','loanMonths'].forEach(id => on(id, 'input', renderLoanCalc));
+    ['loanBalance','loanAPR','loanPayment','loanExtra','loanMonths'].forEach(id => on(id, 'input', () => { renderLoanCalc(); saveExtrasDebounced(); }));
 
     on('calcCCBtn', 'click', renderCreditCard);
-    ['ccLimit','ccBalance','ccMinPayment','ccTargetPayment','ccExtraPayment'].forEach(id => on(id, 'input', renderCreditCard));
+    ['ccLimit','ccBalance','ccMinPayment','ccTargetPayment','ccExtraPayment'].forEach(id => on(id, 'input', () => { renderCreditCard(); saveExtrasDebounced(); }));
 
     // Editable Paycheck Autopilot category titles (amounts stay auto-calculated)
     document.querySelectorAll('.ac-label-input').forEach(inp => {
@@ -980,7 +993,10 @@ function setupEventListeners() {
 
     ['trip-bnb','trip-flight','trip-food','trip-buffer',
      'trip2-bnb','trip2-flight','trip2-food','trip2-buffer',
-     'proj-monthly-add'].forEach(id => on(id, 'input', renderSavings));
+     'proj-monthly-add'].forEach(id => on(id, 'input', () => { renderSavings(); saveExtrasDebounced(); }));
+
+    ['trip1-location','trip-bnb-note','trip2-location','trip2-bnb-note']
+        .forEach(id => on(id, 'input', saveExtrasDebounced));
 
     on('proj-start-month', 'change', renderSavings);
 
