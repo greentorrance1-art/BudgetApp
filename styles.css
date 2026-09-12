@@ -366,21 +366,6 @@ tfoot td {
     background-color: var(--border-color);
 }
 
-.summary-section {
-    background-color: var(--bg-secondary);
-    padding: 24px;
-    border-radius: 12px;
-    box-shadow: var(--shadow);
-    margin-bottom: 24px;
-}
-
-.summary-section h2 {
-    font-size: 22px;
-    font-weight: 700;
-    margin-bottom: 20px;
-    color: var(--text-primary);
-}
-
 .table-wrapper {
     overflow-x: auto;
     margin-bottom: 24px;
@@ -901,6 +886,45 @@ tfoot td {
 .payoff-milestone-pill strong { font-size: 17px; color: var(--text-primary); }
 .payoff-milestone-pill.cc-pill strong  { color: #ef4444; }
 .payoff-milestone-pill.sav-pill strong { color: #10b981; }
+
+/* ══════════════════════════════════════════════════════════════
+   💡 WHY THIS PLAN WORKS
+══════════════════════════════════════════════════════════════ */
+.why-section { border-left: 4px solid #f59e0b; }
+.why-flow-banner {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+    gap: 10px; background: var(--bg-tertiary); border: 1px solid var(--border-color);
+    border-radius: 12px; padding: 16px 20px; margin-bottom: 20px;
+    font-size: 14px; font-weight: 800; color: var(--text-primary);
+}
+.why-arrow { color: var(--text-muted); font-weight: 400; }
+.why-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 16px; margin-bottom: 20px;
+}
+@media (max-width: 1024px) { .why-grid { grid-template-columns: 1fr; } }
+.why-line {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 7px 0; border-bottom: 1px solid var(--border-color);
+    font-size: 13px; color: var(--text-secondary);
+}
+.why-line:last-child { border-bottom: none; }
+.why-line strong { font-size: 14px; color: var(--text-primary); }
+.why-line.why-highlight { font-weight: 700; }
+.why-line.why-highlight span { color: var(--text-primary); }
+.why-green { color: #10b981 !important; }
+.why-red   { color: #ef4444 !important; }
+.why-priority-banner {
+    background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(245,158,11,0.05));
+    border-color: rgba(245,158,11,0.3); text-align: left; justify-content: flex-start;
+}
+.why-priority-banner strong { font-size: 14px; color: inherit; }
+.why-copy { font-size: 14px; line-height: 1.6; color: var(--text-secondary); margin: 14px 0; }
+.why-golden-rule {
+    text-align: center; font-size: 16px; font-weight: 800; color: var(--text-primary);
+    background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.3);
+    border-radius: 10px; padding: 16px 20px; margin-top: 16px;
+}
 
 /* ── Loan stat row ── */
 .lr-stat-row {
