@@ -273,7 +273,35 @@ function getCurrentMonthData(data) {
 // Runs exactly once (guarded by data.blueprintApplied) to drop the real household
 // numbers into the current month + credit card + savings goal. After that, it
 // never touches the data again — your own edits are always safe.
-const BLUEPRINT_VERSION = 2; // bump this + add a branch below whenever the seeded numbers change
+const BLUEPRINT_VERSION = 3; // bump this + add a branch below whenever the seeded numbers change
+
+const KNOWN_BLUEPRINT_EXPENSES = [
+    'Rent', 'Car Note', 'Car Insurance', 'Phone', 'Wi-Fi',
+    'Groceries', 'Tesla Charging', 'Electricity', 'Credit Card Minimum', 'Misc / Household Cushion'
+];
+
+// Splits any known blueprint expense that's currently sitting all-under-His (Her = 0)
+// into an even 50/50 combined amount. Safe to run repeatedly — once an item is split,
+// Her is no longer 0, so it's left alone on future runs (won't re-fight your edits).
+function fixExpenseSplit(data) {
+    const round2 = n => Math.round(n * 100) / 100;
+    let changed = false;
+    Object.values(data.years || {}).forEach(yr => {
+        Object.values(yr).forEach(mo => {
+            (mo.expenses || []).forEach(item => {
+                if (KNOWN_BLUEPRINT_EXPENSES.includes(item.description) && parseNumber(item.herAmount) === 0) {
+                    const combined = parseNumber(item.hisAmount) + parseNumber(item.herAmount);
+                    if (combined > 0) {
+                        item.hisAmount = round2(combined / 2);
+                        item.herAmount = round2(combined / 2);
+                        changed = true;
+                    }
+                }
+            });
+        });
+    });
+    return changed;
+}
 
 function applyBlueprintIfNeeded(data) {
     const currentVersion = data.blueprintVersion || (data.blueprintApplied ? 1 : 0);
@@ -308,26 +336,8 @@ function applyBlueprintIfNeeded(data) {
             data.creditCardData = { limit: 10000, balance: 7672.99, minPayment: 120, targetPayment: 1833, extraPayment: 0 };
         }
 
-        if (currentVersion < 2) {
-            // Fix: expenses should be split 50/50 between His and Her, not all under His.
-            // Only touches items still sitting at the untouched auto-seeded amount, so any
-            // amount you've since edited by hand is left exactly as you set it.
-            const KNOWN = {
-                'Rent': 1600, 'Car Note': 515, 'Car Insurance': 610, 'Phone': 170, 'Wi-Fi': 45,
-                'Groceries': 400, 'Tesla Charging': 413, 'Electricity': 170,
-                'Credit Card Minimum': 120, 'Misc / Household Cushion': 200
-            };
-            Object.values(data.years || {}).forEach(yr => {
-                Object.values(yr).forEach(mo => {
-                    (mo.expenses || []).forEach(item => {
-                        const known = KNOWN[item.description];
-                        if (known != null && parseNumber(item.hisAmount) === known && parseNumber(item.herAmount) === 0) {
-                            item.hisAmount = round2(known / 2);
-                            item.herAmount = round2(known / 2);
-                        }
-                    });
-                });
-            });
+        if (currentVersion < 3) {
+            fixExpenseSplit(data);
         }
 
         data.blueprintVersion = BLUEPRINT_VERSION;
@@ -810,6 +820,14 @@ function setupEventListeners() {
     on('closeSettings', 'click', () => {
         const modal = document.getElementById('settingsModal');
         if (modal) modal.style.display = 'none';
+    });
+
+    on('fixSplitBtn', 'click', async () => {
+        const data = await loadData();
+        const changed = fixExpenseSplit(data);
+        await saveData(data);
+        renderAll(data);
+        alert(changed ? 'Done — expenses are now split 50/50 between His and Her.' : 'Nothing to fix — everything already looks split.');
     });
 
     window.addEventListener('click', (e) => {
