@@ -210,18 +210,41 @@ h1 {
 
 .budget-section {
     background-color: var(--bg-secondary);
-    padding: 24px;
+    padding: 18px 22px;
     border-radius: 12px;
     box-shadow: var(--shadow);
-    margin-bottom: 24px;
+    margin-bottom: 16px;
 }
 
 .budget-section h2 {
-    font-size: 22px;
+    font-size: 19px;
     font-weight: 700;
-    margin-bottom: 20px;
+    margin-bottom: 14px;
     color: var(--text-primary);
 }
+
+/* ── Collapsible sections (sleeker, less crowded dashboard) ── */
+.section-toggle-header {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+h2.section-toggle-header { margin-bottom: 0; }
+.section-chevron {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-left: 12px;
+    flex-shrink: 0;
+    transition: transform 0.15s ease;
+}
+.section-body {
+    margin-top: 14px;
+    animation: section-fade-in 0.15s ease;
+}
+.section-body.is-collapsed { display: none; }
+@keyframes section-fade-in { from { opacity: 0; } to { opacity: 1; } }
 
 .section-content {
     display: grid;
@@ -860,6 +883,24 @@ tfoot td {
 }
 .proj-add-wrap { display: flex; flex-direction: column; gap: 4px; min-width: 140px; }
 .proj-table-wrap { padding: 16px 20px; max-height: 300px; overflow-y: auto; }
+
+.payoff-proj-card { margin-top: 20px; }
+.payoff-inputs-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 14px; padding: 18px 20px 4px;
+}
+@media (max-width: 768px) { .payoff-inputs-grid { grid-template-columns: 1fr 1fr; } }
+.payoff-input-block { display: flex; flex-direction: column; }
+.payoff-milestones { display: flex; gap: 12px; padding: 4px 20px 16px; flex-wrap: wrap; }
+.payoff-milestone-pill {
+    flex: 1; min-width: 200px; border-radius: 10px; padding: 12px 16px;
+    background: var(--bg-secondary); border: 1px solid var(--border-color);
+    display: flex; flex-direction: column; gap: 4px;
+}
+.payoff-milestone-pill span { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px; }
+.payoff-milestone-pill strong { font-size: 17px; color: var(--text-primary); }
+.payoff-milestone-pill.cc-pill strong  { color: #ef4444; }
+.payoff-milestone-pill.sav-pill strong { color: #10b981; }
 
 /* ── Loan stat row ── */
 .lr-stat-row {
