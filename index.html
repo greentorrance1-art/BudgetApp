@@ -501,77 +501,6 @@
         <section class="budget-section savings-section">
             <h2>💾 Savings & Goals</h2>
 
-            <!-- Two vacation planners side by side -->
-            <div class="trips-row">
-                <!-- Trip 1 -->
-                <div class="trip-card trip1-card">
-                    <div class="trip-card-header">
-                        <span class="trip-num">Trip 1</span>
-                        <input type="text" class="trip-location-input" id="trip1-location" value="Puerto Rico 🇵🇷" placeholder="Destination">
-                    </div>
-                    <div class="trip-fields">
-                        <div class="trip-field-row">
-                            <label>🏠 Accommodation</label>
-                            <div class="trip-field-right">
-                                <input type="number" class="trip-num-input" id="trip-bnb" value="0" step="0.01">
-                                <input type="text" class="trip-note-input" id="trip-bnb-note" value="Already Booked ✅" placeholder="note">
-                            </div>
-                        </div>
-                        <div class="trip-field-row">
-                            <label>✈️ Flight</label>
-                            <input type="number" class="trip-num-input" id="trip-flight" value="350" step="0.01">
-                        </div>
-                        <div class="trip-field-row">
-                            <label>🍽️ Food & Activities</label>
-                            <input type="number" class="trip-num-input" id="trip-food" value="350" step="0.01">
-                        </div>
-                        <div class="trip-field-row">
-                            <label>🆘 Buffer</label>
-                            <input type="number" class="trip-num-input" id="trip-buffer" value="100" step="0.01">
-                        </div>
-                    </div>
-                    <div class="trip-totals">
-                        <div class="trip-total-row"><span>Trip Total</span><strong id="trip1-total">$800</strong></div>
-                        <div class="trip-total-row"><span>Savings After Trip</span><strong id="trip1-after">$1,300</strong></div>
-                    </div>
-                    <div class="trip-floor-badge" id="trip1-floor">✅ Still above $1,000 floor</div>
-                </div>
-
-                <!-- Trip 2 -->
-                <div class="trip-card trip2-card">
-                    <div class="trip-card-header">
-                        <span class="trip-num">Trip 2</span>
-                        <input type="text" class="trip-location-input" id="trip2-location" value="TBD 🌍" placeholder="Destination">
-                    </div>
-                    <div class="trip-fields">
-                        <div class="trip-field-row">
-                            <label>🏠 Accommodation</label>
-                            <div class="trip-field-right">
-                                <input type="number" class="trip-num-input" id="trip2-bnb" value="0" step="0.01">
-                                <input type="text" class="trip-note-input" id="trip2-bnb-note" value="" placeholder="booked? note">
-                            </div>
-                        </div>
-                        <div class="trip-field-row">
-                            <label>✈️ Flight</label>
-                            <input type="number" class="trip-num-input" id="trip2-flight" value="0" step="0.01">
-                        </div>
-                        <div class="trip-field-row">
-                            <label>🍽️ Food & Activities</label>
-                            <input type="number" class="trip-num-input" id="trip2-food" value="0" step="0.01">
-                        </div>
-                        <div class="trip-field-row">
-                            <label>🆘 Buffer</label>
-                            <input type="number" class="trip-num-input" id="trip2-buffer" value="0" step="0.01">
-                        </div>
-                    </div>
-                    <div class="trip-totals">
-                        <div class="trip-total-row"><span>Trip Total</span><strong id="trip2-total">$0</strong></div>
-                        <div class="trip-total-row"><span>Savings After Both Trips</span><strong id="trip2-after">—</strong></div>
-                    </div>
-                    <div class="trip-floor-badge" id="trip2-floor">—</div>
-                </div>
-            </div>
-
             <!-- Savings Goals -->
             <div class="goals-card">
                 <div class="loan-card-title">🎯 Savings Goals</div>
@@ -679,7 +608,8 @@
             </div>
         </section>
 
-        <section class="summary-section">
+        <!-- 12 MONTH SUMMARY -->
+        <section class="budget-section summary-section">
             <h2>12 Month Summary</h2>
             <div class="table-wrapper">
                 <table id="summaryTable">
@@ -706,8 +636,61 @@
                     <tbody id="summaryTableBody"></tbody>
                 </table>
             </div>
-            <div class="chart-container-large">
-                <canvas id="yearChart"></canvas>
+        </section>
+
+        <!-- 💡 WHY THIS PLAN WORKS -->
+        <section class="budget-section why-section">
+            <h2>💡 Why This Plan Works</h2>
+            <p class="section-desc">Our household money blueprint — the system behind every number on this dashboard.</p>
+
+            <div class="why-flow-banner">
+                <span>$7,076 IN</span><span class="why-arrow">→</span>
+                <span>$4,250 HOUSEHOLD</span><span class="why-arrow">→</span>
+                <span>$1,000 SAVE</span><span class="why-arrow">→</span>
+                <span>~$1,830 DEBT</span>
+            </div>
+
+            <div class="why-grid">
+                <div class="loan-card">
+                    <div class="loan-card-title">Every Paycheck, Automatically</div>
+                    <div class="why-line"><span>You → Joint Checking</span><strong>$930</strong></div>
+                    <div class="why-line"><span>Wife → Joint Checking</span><strong>$1,030</strong></div>
+                    <div class="why-line why-highlight"><span>Combined, every 2 weeks</span><strong>$1,960</strong></div>
+                    <div class="why-line why-highlight"><span>≈ Monthly avg. to run household</span><strong>$4,250</strong></div>
+                </div>
+
+                <div class="loan-card">
+                    <div class="loan-card-title">After the $4,243 in Bills</div>
+                    <div class="why-line"><span>Monthly Income</span><strong>$7,076</strong></div>
+                    <div class="why-line"><span>− Household Expenses</span><strong>$4,243</strong></div>
+                    <div class="why-line why-highlight"><span>= Left Over Each Month</span><strong>$2,833</strong></div>
+                    <div class="why-line"><span>→ Savings / Baby Fund</span><strong class="why-green">$1,000</strong></div>
+                    <div class="why-line"><span>→ Credit Card</span><strong class="why-red">~$1,833</strong></div>
+                </div>
+
+                <div class="loan-card">
+                    <div class="loan-card-title">Where We Stand Right Now</div>
+                    <div class="why-line"><span>Current Savings</span><strong>$5,580.90</strong></div>
+                    <div class="why-line"><span>Savings Goal</span><strong>$10,000</strong></div>
+                    <div class="why-line why-highlight"><span>Still Needed</span><strong>$4,419.10</strong></div>
+                    <div class="why-line"><span>Credit Card Balance</span><strong class="why-red">$7,672.99</strong></div>
+                    <div class="why-line"><span>APR</span><strong class="why-red">18%</strong></div>
+                </div>
+            </div>
+
+            <div class="interest-saved-banner why-priority-banner">
+                🚨&nbsp;<strong>First priority right now:</strong>&nbsp;bring the overdue car payment completely current. Then follow this system every payday.
+            </div>
+
+            <p class="why-copy">
+                This plan gives every dollar a job before you can spend it. Your regular lifestyle is funded first, you're still building cash for the baby and emergencies, and roughly <strong>$1,833/month</strong> attacks the high-interest debt instead of letting it linger.
+            </p>
+            <p class="why-copy">
+                Once the credit card is gone, <strong>do not absorb that $1,833 back into your lifestyle.</strong> Redirect it to savings — that's when your cash starts growing much faster.
+            </p>
+
+            <div class="why-golden-rule">
+                Live on the $4,250. Save the $1,000. Kill the debt with the rest.
             </div>
         </section>
     </div>
