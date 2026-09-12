@@ -191,16 +191,16 @@ function getDefaultData() {
     ];
 
     const sampleExpenses = [
-        { id: generateUniqueId(), description: 'Rent', estimated: 1600, actual: 1600, hisAmount: 1600, herAmount: 0, fixed: true },
-        { id: generateUniqueId(), description: 'Car Note', estimated: 515, actual: 515, hisAmount: 515, herAmount: 0, fixed: true },
-        { id: generateUniqueId(), description: 'Car Insurance', estimated: 610, actual: 610, hisAmount: 610, herAmount: 0, fixed: true },
-        { id: generateUniqueId(), description: 'Phone', estimated: 170, actual: 170, hisAmount: 170, herAmount: 0, fixed: true },
-        { id: generateUniqueId(), description: 'Wi-Fi', estimated: 45, actual: 45, hisAmount: 45, herAmount: 0, fixed: true },
-        { id: generateUniqueId(), description: 'Groceries', estimated: 400, actual: 400, hisAmount: 400, herAmount: 0, fixed: true },
-        { id: generateUniqueId(), description: 'Tesla Charging', estimated: 413, actual: 413, hisAmount: 413, herAmount: 0, fixed: true },
-        { id: generateUniqueId(), description: 'Electricity', estimated: 170, actual: 170, hisAmount: 170, herAmount: 0, fixed: true },
-        { id: generateUniqueId(), description: 'Credit Card Minimum', estimated: 120, actual: 120, hisAmount: 120, herAmount: 0, fixed: true },
-        { id: generateUniqueId(), description: 'Misc / Household Cushion', estimated: 200, actual: 200, hisAmount: 200, herAmount: 0, fixed: true }
+        { id: generateUniqueId(), description: 'Rent', estimated: 1600, actual: 1600, hisAmount: 800, herAmount: 800, fixed: true },
+        { id: generateUniqueId(), description: 'Car Note', estimated: 515, actual: 515, hisAmount: 257.5, herAmount: 257.5, fixed: true },
+        { id: generateUniqueId(), description: 'Car Insurance', estimated: 610, actual: 610, hisAmount: 305, herAmount: 305, fixed: true },
+        { id: generateUniqueId(), description: 'Phone', estimated: 170, actual: 170, hisAmount: 85, herAmount: 85, fixed: true },
+        { id: generateUniqueId(), description: 'Wi-Fi', estimated: 45, actual: 45, hisAmount: 22.5, herAmount: 22.5, fixed: true },
+        { id: generateUniqueId(), description: 'Groceries', estimated: 400, actual: 400, hisAmount: 200, herAmount: 200, fixed: true },
+        { id: generateUniqueId(), description: 'Tesla Charging', estimated: 413, actual: 413, hisAmount: 206.5, herAmount: 206.5, fixed: true },
+        { id: generateUniqueId(), description: 'Electricity', estimated: 170, actual: 170, hisAmount: 85, herAmount: 85, fixed: true },
+        { id: generateUniqueId(), description: 'Credit Card Minimum', estimated: 120, actual: 120, hisAmount: 60, herAmount: 60, fixed: true },
+        { id: generateUniqueId(), description: 'Misc / Household Cushion', estimated: 200, actual: 200, hisAmount: 100, herAmount: 100, fixed: true }
     ];
 
     const incomeColors = generateUniqueColors(sampleIncome.length);
@@ -273,34 +273,64 @@ function getCurrentMonthData(data) {
 // Runs exactly once (guarded by data.blueprintApplied) to drop the real household
 // numbers into the current month + credit card + savings goal. After that, it
 // never touches the data again — your own edits are always safe.
+const BLUEPRINT_VERSION = 2; // bump this + add a branch below whenever the seeded numbers change
+
 function applyBlueprintIfNeeded(data) {
-    if (data.blueprintApplied) return false;
+    const currentVersion = data.blueprintVersion || (data.blueprintApplied ? 1 : 0);
+    if (currentVersion >= BLUEPRINT_VERSION) return false;
+    const round2 = n => Math.round(n * 100) / 100;
     try {
-        const monthData = getCurrentMonthData(data);
+        if (currentVersion === 0) {
+            // First-ever seed: drop the real household numbers into the current month.
+            const monthData = getCurrentMonthData(data);
 
-        const blueprintExpenses = [
-            ['Rent', 1600], ['Car Note', 515], ['Car Insurance', 610], ['Phone', 170],
-            ['Wi-Fi', 45], ['Groceries', 400], ['Tesla Charging', 413], ['Electricity', 170],
-            ['Credit Card Minimum', 120], ['Misc / Household Cushion', 200]
-        ];
-        monthData.expenses = blueprintExpenses.map(([description, amt]) => ({
-            id: generateUniqueId(), description, estimated: amt, actual: amt,
-            hisAmount: amt, herAmount: 0, fixed: true
-        }));
-        monthData.expenseColors = generateUniqueColors(monthData.expenses.length);
+            const blueprintExpenses = [
+                ['Rent', 1600], ['Car Note', 515], ['Car Insurance', 610], ['Phone', 170],
+                ['Wi-Fi', 45], ['Groceries', 400], ['Tesla Charging', 413], ['Electricity', 170],
+                ['Credit Card Minimum', 120], ['Misc / Household Cushion', 200]
+            ];
+            monthData.expenses = blueprintExpenses.map(([description, amt]) => ({
+                id: generateUniqueId(), description, estimated: amt, actual: amt,
+                hisAmount: round2(amt / 2), herAmount: round2(amt / 2), fixed: true
+            }));
+            monthData.expenseColors = generateUniqueColors(monthData.expenses.length);
 
-        monthData.income = [
-            { id: generateUniqueId(), description: 'Your Paycheck (to Joint)', estimated: 2015, actual: 2015, hisAmount: 2015, herAmount: 0 },
-            { id: generateUniqueId(), description: "Wife's Paycheck (to Joint)", estimated: 2231.67, actual: 2231.67, hisAmount: 0, herAmount: 2231.67 }
-        ];
-        monthData.incomeColors = generateUniqueColors(monthData.income.length);
+            monthData.income = [
+                { id: generateUniqueId(), description: 'Your Paycheck (to Joint)', estimated: 2015, actual: 2015, hisAmount: 2015, herAmount: 0 },
+                { id: generateUniqueId(), description: "Wife's Paycheck (to Joint)", estimated: 2231.67, actual: 2231.67, hisAmount: 0, herAmount: 2231.67 }
+            ];
+            monthData.incomeColors = generateUniqueColors(monthData.income.length);
 
-        if (!data.savingsGoals || data.savingsGoals.length === 0) {
-            data.savingsGoals = [{ id: generateUniqueId(), name: 'Baby Fund / Emergency Savings', amount: 5580.90 }];
+            if (!data.savingsGoals || data.savingsGoals.length === 0) {
+                data.savingsGoals = [{ id: generateUniqueId(), name: 'Baby Fund / Emergency Savings', amount: 5580.90 }];
+            }
+
+            data.creditCardData = { limit: 10000, balance: 7672.99, minPayment: 120, targetPayment: 1833, extraPayment: 0 };
         }
 
-        data.creditCardData = { limit: 10000, balance: 7672.99, minPayment: 120, targetPayment: 1833, extraPayment: 0 };
+        if (currentVersion < 2) {
+            // Fix: expenses should be split 50/50 between His and Her, not all under His.
+            // Only touches items still sitting at the untouched auto-seeded amount, so any
+            // amount you've since edited by hand is left exactly as you set it.
+            const KNOWN = {
+                'Rent': 1600, 'Car Note': 515, 'Car Insurance': 610, 'Phone': 170, 'Wi-Fi': 45,
+                'Groceries': 400, 'Tesla Charging': 413, 'Electricity': 170,
+                'Credit Card Minimum': 120, 'Misc / Household Cushion': 200
+            };
+            Object.values(data.years || {}).forEach(yr => {
+                Object.values(yr).forEach(mo => {
+                    (mo.expenses || []).forEach(item => {
+                        const known = KNOWN[item.description];
+                        if (known != null && parseNumber(item.hisAmount) === known && parseNumber(item.herAmount) === 0) {
+                            item.hisAmount = round2(known / 2);
+                            item.herAmount = round2(known / 2);
+                        }
+                    });
+                });
+            });
+        }
 
+        data.blueprintVersion = BLUEPRINT_VERSION;
         data.blueprintApplied = true;
         return true;
     } catch (e) {
@@ -1036,15 +1066,10 @@ function setupEventListeners() {
         renderSavingsGoals(data);
     });
 
-    ['trip-bnb','trip-flight','trip-food','trip-buffer',
-     'trip2-bnb','trip2-flight','trip2-food','trip2-buffer',
-     'proj-monthly-add'].forEach(id => on(id, 'input', () => { renderSavings(); saveExtrasDebounced(); }));
+    ['proj-monthly-add'].forEach(id => on(id, 'input', () => { renderSavings(); saveExtrasDebounced(); }));
 
     ['proj-ccBalance','proj-ccAPR','proj-ccPayment','proj-savStart','proj-savMonthly','proj-savGoal']
         .forEach(id => on(id, 'input', () => { renderPayoffProjection(); saveExtrasDebounced(); }));
-
-    ['trip1-location','trip-bnb-note','trip2-location','trip2-bnb-note']
-        .forEach(id => on(id, 'input', saveExtrasDebounced));
 
     on('proj-start-month', 'change', renderSavings);
 
@@ -1263,40 +1288,12 @@ function renderSavings() {
     try {
         const g   = id => document.getElementById(id);
         const gv  = (id, def) => { const el = g(id); return el ? (parseFloat(el.value) || def) : def; };
-        const set = (id, val) => { const el = g(id); if (el) el.textContent = val; };
         const FLOOR = 1000;
 
         // "Total Savings" now comes from the Savings Goals list (same figure shown at the
         // top of the dashboard), since the old manual Total Savings bucket was removed.
         const total = Array.from(document.querySelectorAll('.goal-amount-input'))
             .reduce((s, el) => s + (parseFloat(el.value) || 0), 0);
-
-        const bnb1 = gv('trip-bnb', 0); const flight1 = gv('trip-flight', 350);
-        const food1 = gv('trip-food', 350); const buf1 = gv('trip-buffer', 100);
-        const trip1Total = bnb1 + flight1 + food1 + buf1;
-        const afterTrip1 = total - trip1Total;
-        set('trip1-total', formatCurrency(trip1Total));
-        set('trip1-after', formatCurrency(afterTrip1));
-        const fb1 = g('trip1-floor');
-        if (fb1) {
-            fb1.textContent = afterTrip1 >= FLOOR ? '✅ Still above $1,000 floor' : '🚨 Below floor after trip!';
-            fb1.className   = 'trip-floor-badge ' + (afterTrip1 >= FLOOR ? 'floor-safe' : 'floor-danger');
-        }
-
-        const bnb2 = gv('trip2-bnb', 0); const flight2 = gv('trip2-flight', 0);
-        const food2 = gv('trip2-food', 0); const buf2 = gv('trip2-buffer', 0);
-        const trip2Total = bnb2 + flight2 + food2 + buf2;
-        const afterBoth  = total - trip1Total - trip2Total;
-        set('trip2-total', formatCurrency(trip2Total));
-        set('trip2-after', formatCurrency(afterBoth));
-        const fb2 = g('trip2-floor');
-        if (fb2) {
-            if (trip2Total === 0) { fb2.textContent = '—'; fb2.className = 'trip-floor-badge'; }
-            else {
-                fb2.textContent = afterBoth >= FLOOR ? '✅ Still above $1,000 after both trips' : '🚨 Below floor after both trips!';
-                fb2.className   = 'trip-floor-badge ' + (afterBoth >= FLOOR ? 'floor-safe' : 'floor-danger');
-            }
-        }
 
         const monthlyAdd = gv('proj-monthly-add', 150);
         const projBody   = g('projBody');
@@ -1386,16 +1383,8 @@ function renderPayoffProjection() {
 function saveSavingsData(data) {
     try {
         const gv  = (id, def) => { const el = document.getElementById(id); return el ? (parseFloat(el.value) || def) : def; };
-        const gvs = (id, def) => { const el = document.getElementById(id); return el ? (el.value || def) : def; };
         data.savingsData = {
-            trip1Location: gvs('trip1-location', 'Puerto Rico 🇵🇷'),
-            tripBnb: gv('trip-bnb', 0), tripBnbNote: gvs('trip-bnb-note', ''),
-            tripFlight: gv('trip-flight', 350), tripFood: gv('trip-food', 350),
-            tripBuffer: gv('trip-buffer', 100),
-            trip2Location: gvs('trip2-location', 'TBD 🌍'),
-            trip2Bnb: gv('trip2-bnb', 0), trip2BnbNote: gvs('trip2-bnb-note', ''),
-            trip2Flight: gv('trip2-flight', 0), trip2Food: gv('trip2-food', 0),
-            trip2Buffer: gv('trip2-buffer', 0), projMonthly: gv('proj-monthly-add', 150),
+            projMonthly: gv('proj-monthly-add', 150),
             projStartMonth: gv('proj-start-month', new Date().getMonth()),
         };
         data.payoffProjectionData = {
@@ -1422,12 +1411,6 @@ function loadPersistedExtras(data) {
         const sv = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
         if (data.savingsData) {
             const s = data.savingsData;
-            sv('trip1-location', s.trip1Location); sv('trip-bnb', s.tripBnb);
-            sv('trip-bnb-note', s.tripBnbNote); sv('trip-flight', s.tripFlight);
-            sv('trip-food', s.tripFood); sv('trip-buffer', s.tripBuffer);
-            sv('trip2-location', s.trip2Location); sv('trip2-bnb', s.trip2Bnb);
-            sv('trip2-bnb-note', s.trip2BnbNote); sv('trip2-flight', s.trip2Flight);
-            sv('trip2-food', s.trip2Food); sv('trip2-buffer', s.trip2Buffer);
             sv('proj-monthly-add', s.projMonthly);
             if (s.projStartMonth != null) sv('proj-start-month', s.projStartMonth);
         }
@@ -1510,7 +1493,7 @@ function renderCombinedSummary(data) {
 // Purely additive: wraps each section's existing content in a toggle body without
 // touching any element IDs or event bindings, so nothing that already works breaks.
 function initCollapsibleSections() {
-    const OPEN_BY_DEFAULT = ['Income', 'Expenses'];
+    const OPEN_BY_DEFAULT = ['Income', 'Expenses', 'Why This Plan Works'];
     document.querySelectorAll('.container > .budget-section').forEach(section => {
         if (section.dataset.collapseInit) return;
         section.dataset.collapseInit = '1';
@@ -1577,6 +1560,7 @@ async function initApp() {
         console.error('[App] Failed to load valid data, using defaults');
         const defaultData = getDefaultData();
         defaultData.blueprintApplied = true; // getDefaultData() already uses the real numbers
+        defaultData.blueprintVersion = BLUEPRINT_VERSION;
         await saveData(defaultData);
         renderAll(defaultData);
     } else {
