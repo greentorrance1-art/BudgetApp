@@ -186,16 +186,21 @@ function getDefaultData() {
     };
 
     const sampleIncome = [
-        { id: generateUniqueId(), description: 'Salary', estimated: 5000, actual: 5000, hisAmount: 5000, herAmount: 0 },
-        { id: generateUniqueId(), description: 'Side Income', estimated: 800, actual: 750, hisAmount: 800, herAmount: 0 }
+        { id: generateUniqueId(), description: 'Your Paycheck (to Joint)', estimated: 2015.00, actual: 2015.00, hisAmount: 2015.00, herAmount: 0 },
+        { id: generateUniqueId(), description: "Wife's Paycheck (to Joint)", estimated: 2231.67, actual: 2231.67, hisAmount: 0, herAmount: 2231.67 }
     ];
 
     const sampleExpenses = [
-        { id: generateUniqueId(), description: 'Rent', estimated: 1500, actual: 1500, hisAmount: 750, herAmount: 750, fixed: true },
-        { id: generateUniqueId(), description: 'Food', estimated: 600, actual: 650, hisAmount: 300, herAmount: 300, fixed: false },
-        { id: generateUniqueId(), description: 'Utilities', estimated: 200, actual: 180, hisAmount: 100, herAmount: 100, fixed: true },
-        { id: generateUniqueId(), description: 'Transportation', estimated: 300, actual: 320, hisAmount: 300, herAmount: 0, fixed: false },
-        { id: generateUniqueId(), description: 'Subscriptions', estimated: 100, actual: 95, hisAmount: 50, herAmount: 50, fixed: true }
+        { id: generateUniqueId(), description: 'Rent', estimated: 1600, actual: 1600, hisAmount: 1600, herAmount: 0, fixed: true },
+        { id: generateUniqueId(), description: 'Car Note', estimated: 515, actual: 515, hisAmount: 515, herAmount: 0, fixed: true },
+        { id: generateUniqueId(), description: 'Car Insurance', estimated: 610, actual: 610, hisAmount: 610, herAmount: 0, fixed: true },
+        { id: generateUniqueId(), description: 'Phone', estimated: 170, actual: 170, hisAmount: 170, herAmount: 0, fixed: true },
+        { id: generateUniqueId(), description: 'Wi-Fi', estimated: 45, actual: 45, hisAmount: 45, herAmount: 0, fixed: true },
+        { id: generateUniqueId(), description: 'Groceries', estimated: 400, actual: 400, hisAmount: 400, herAmount: 0, fixed: true },
+        { id: generateUniqueId(), description: 'Tesla Charging', estimated: 413, actual: 413, hisAmount: 413, herAmount: 0, fixed: true },
+        { id: generateUniqueId(), description: 'Electricity', estimated: 170, actual: 170, hisAmount: 170, herAmount: 0, fixed: true },
+        { id: generateUniqueId(), description: 'Credit Card Minimum', estimated: 120, actual: 120, hisAmount: 120, herAmount: 0, fixed: true },
+        { id: generateUniqueId(), description: 'Misc / Household Cushion', estimated: 200, actual: 200, hisAmount: 200, herAmount: 0, fixed: true }
     ];
 
     const incomeColors = generateUniqueColors(sampleIncome.length);
@@ -262,6 +267,46 @@ function getCurrentMonthData(data) {
         };
     }
     return data.years[currentYear][currentMonth];
+}
+
+// ─── ONE-TIME BLUEPRINT SEED ────────────────────────────────────────────────
+// Runs exactly once (guarded by data.blueprintApplied) to drop the real household
+// numbers into the current month + credit card + savings goal. After that, it
+// never touches the data again — your own edits are always safe.
+function applyBlueprintIfNeeded(data) {
+    if (data.blueprintApplied) return false;
+    try {
+        const monthData = getCurrentMonthData(data);
+
+        const blueprintExpenses = [
+            ['Rent', 1600], ['Car Note', 515], ['Car Insurance', 610], ['Phone', 170],
+            ['Wi-Fi', 45], ['Groceries', 400], ['Tesla Charging', 413], ['Electricity', 170],
+            ['Credit Card Minimum', 120], ['Misc / Household Cushion', 200]
+        ];
+        monthData.expenses = blueprintExpenses.map(([description, amt]) => ({
+            id: generateUniqueId(), description, estimated: amt, actual: amt,
+            hisAmount: amt, herAmount: 0, fixed: true
+        }));
+        monthData.expenseColors = generateUniqueColors(monthData.expenses.length);
+
+        monthData.income = [
+            { id: generateUniqueId(), description: 'Your Paycheck (to Joint)', estimated: 2015, actual: 2015, hisAmount: 2015, herAmount: 0 },
+            { id: generateUniqueId(), description: "Wife's Paycheck (to Joint)", estimated: 2231.67, actual: 2231.67, hisAmount: 0, herAmount: 2231.67 }
+        ];
+        monthData.incomeColors = generateUniqueColors(monthData.income.length);
+
+        if (!data.savingsGoals || data.savingsGoals.length === 0) {
+            data.savingsGoals = [{ id: generateUniqueId(), name: 'Baby Fund / Emergency Savings', amount: 5580.90 }];
+        }
+
+        data.creditCardData = { limit: 10000, balance: 7672.99, minPayment: 120, targetPayment: 1833, extraPayment: 0 };
+
+        data.blueprintApplied = true;
+        return true;
+    } catch (e) {
+        console.warn('[Blueprint] apply error:', e.message);
+        return false;
+    }
 }
 
 function formatCurrency(value) {
@@ -995,6 +1040,9 @@ function setupEventListeners() {
      'trip2-bnb','trip2-flight','trip2-food','trip2-buffer',
      'proj-monthly-add'].forEach(id => on(id, 'input', () => { renderSavings(); saveExtrasDebounced(); }));
 
+    ['proj-ccBalance','proj-ccAPR','proj-ccPayment','proj-savStart','proj-savMonthly','proj-savGoal']
+        .forEach(id => on(id, 'input', () => { renderPayoffProjection(); saveExtrasDebounced(); }));
+
     ['trip1-location','trip-bnb-note','trip2-location','trip2-bnb-note']
         .forEach(id => on(id, 'input', saveExtrasDebounced));
 
@@ -1268,6 +1316,73 @@ function renderSavings() {
     } catch(e) { console.warn('[Savings] render error:', e.message); }
 }
 
+// ─── DEBT PAYOFF & SAVINGS-GOAL PROJECTION ─────────────────────────────────────
+// Independent month-by-month simulation: the card payment and savings contribution
+// are modeled as two separate, non-interacting streams (per your call — no roll-over
+// from debt to savings once the card is paid off).
+function renderPayoffProjection() {
+    try {
+        const g = id => document.getElementById(id);
+        const gv = (id, def) => { const el = g(id); return el ? (parseFloat(el.value) || def) : def; };
+        const set = (id, val) => { const el = g(id); if (el) el.textContent = val; };
+
+        const ccBalanceStart = gv('proj-ccBalance', 0);
+        const apr            = gv('proj-ccAPR', 0);
+        const ccPayment       = gv('proj-ccPayment', 0);
+        const savStart        = gv('proj-savStart', 0);
+        const savMonthly      = gv('proj-savMonthly', 0);
+        const savGoal         = gv('proj-savGoal', 0);
+
+        const tbody = g('payoffProjBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        const rate = apr / 100 / 12;
+        let ccBal = ccBalanceStart;
+        let savBal = savStart;
+        let ccPayoffMonth = ccBal <= 0 ? 0 : null;
+        let savGoalMonth = savBal >= savGoal ? 0 : null;
+
+        const today = new Date();
+        const MAX_MONTHS = 60;
+        for (let m = 1; m <= MAX_MONTHS; m++) {
+            if (ccBal > 0) {
+                const interest = ccBal * rate;
+                ccBal = Math.max(0, ccBal + interest - ccPayment);
+                if (ccBal <= 0 && ccPayoffMonth === null) ccPayoffMonth = m;
+            }
+            savBal += savMonthly;
+            if (savBal >= savGoal && savGoalMonth === null) savGoalMonth = m;
+
+            const rowDate = new Date(today.getFullYear(), today.getMonth() + m, 1);
+            const label = rowDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+
+            let milestone = '';
+            if (ccPayoffMonth === m) milestone += '🎉 Card paid off ';
+            if (savGoalMonth === m) milestone += '🏆 $10K reached';
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${label}</td>
+                <td class="${ccBal <= 0 ? 'positive' : 'negative'}">${formatCurrency(ccBal)}</td>
+                <td class="positive">${formatCurrency(savBal)}</td>
+                <td>${milestone || '—'}</td>
+            `;
+            tbody.appendChild(row);
+
+            if (ccPayoffMonth !== null && savGoalMonth !== null) break;
+        }
+
+        const dateFor = monthsOut => {
+            if (monthsOut === null) return '—';
+            const d = new Date(today.getFullYear(), today.getMonth() + monthsOut, 1);
+            return monthsOut === 0 ? 'Already there' : d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        };
+        set('proj-ccPayoffDate', dateFor(ccPayoffMonth));
+        set('proj-savGoalDate', dateFor(savGoalMonth));
+    } catch (e) { console.warn('[PayoffProjection] render error:', e.message); }
+}
+
 function saveSavingsData(data) {
     try {
         const gv  = (id, def) => { const el = document.getElementById(id); return el ? (parseFloat(el.value) || def) : def; };
@@ -1282,6 +1397,11 @@ function saveSavingsData(data) {
             trip2Flight: gv('trip2-flight', 0), trip2Food: gv('trip2-food', 0),
             trip2Buffer: gv('trip2-buffer', 0), projMonthly: gv('proj-monthly-add', 150),
             projStartMonth: gv('proj-start-month', new Date().getMonth()),
+        };
+        data.payoffProjectionData = {
+            ccBalance: gv('proj-ccBalance', 7672.99), ccAPR: gv('proj-ccAPR', 18),
+            ccPayment: gv('proj-ccPayment', 1833), savStart: gv('proj-savStart', 5580.90),
+            savMonthly: gv('proj-savMonthly', 1000), savGoal: gv('proj-savGoal', 10000),
         };
         data.loanData = {
             balance: gv('loanBalance', 21800), apr: gv('loanAPR', 18.35),
@@ -1324,6 +1444,12 @@ function loadPersistedExtras(data) {
             sv('ccExtraPayment', c.extraPayment);
         }
         if (data.paycheckData) sv('paycheckInput', data.paycheckData.amount);
+        if (data.payoffProjectionData) {
+            const p = data.payoffProjectionData;
+            sv('proj-ccBalance', p.ccBalance); sv('proj-ccAPR', p.ccAPR);
+            sv('proj-ccPayment', p.ccPayment); sv('proj-savStart', p.savStart);
+            sv('proj-savMonthly', p.savMonthly); sv('proj-savGoal', p.savGoal);
+        }
     } catch(e) { console.warn('[loadPersistedExtras] error:', e.message); }
 }
 
@@ -1380,6 +1506,43 @@ function renderCombinedSummary(data) {
     } catch(e) { console.warn('[renderCombinedSummary] error:', e.message); }
 }
 
+// ─── COLLAPSIBLE SECTIONS (sleeker, less crowded layout) ───────────────────────
+// Purely additive: wraps each section's existing content in a toggle body without
+// touching any element IDs or event bindings, so nothing that already works breaks.
+function initCollapsibleSections() {
+    const OPEN_BY_DEFAULT = ['Income', 'Expenses'];
+    document.querySelectorAll('.container > .budget-section').forEach(section => {
+        if (section.dataset.collapseInit) return;
+        section.dataset.collapseInit = '1';
+
+        const headerRow = section.querySelector(':scope > .section-header-row');
+        const h2 = section.querySelector(':scope > h2') || (headerRow && headerRow.querySelector('h2'));
+        if (!h2) return;
+        const headerEl = headerRow || h2;
+        const startOpen = OPEN_BY_DEFAULT.some(t => h2.textContent.includes(t));
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'section-body';
+        const toMove = [];
+        let node = headerEl.nextSibling;
+        while (node) { toMove.push(node); node = node.nextSibling; }
+        toMove.forEach(n => wrapper.appendChild(n));
+        section.appendChild(wrapper);
+
+        headerEl.classList.add('section-toggle-header');
+        const chevron = document.createElement('span');
+        chevron.className = 'section-chevron';
+        chevron.textContent = startOpen ? '▾' : '▸';
+        headerEl.appendChild(chevron);
+        if (!startOpen) wrapper.classList.add('is-collapsed');
+
+        headerEl.addEventListener('click', () => {
+            const collapsed = wrapper.classList.toggle('is-collapsed');
+            chevron.textContent = collapsed ? '▸' : '▾';
+        });
+    });
+}
+
 function renderAll(data) {
     renderIncomeTable(data);
     renderExpenseTable(data);
@@ -1396,6 +1559,7 @@ function renderAll(data) {
     renderLoanCalc();
     renderCreditCard();
     renderSavings();
+    renderPayoffProjection();
     updateFixedBillsTotal(data); // must run last — it's computed, never a stale persisted value
 }
 
@@ -1412,12 +1576,17 @@ async function initApp() {
     if (!data || !data.years) {
         console.error('[App] Failed to load valid data, using defaults');
         const defaultData = getDefaultData();
+        defaultData.blueprintApplied = true; // getDefaultData() already uses the real numbers
         await saveData(defaultData);
         renderAll(defaultData);
     } else {
         console.log('[App] Data loaded successfully');
+        const blueprintJustApplied = applyBlueprintIfNeeded(data);
+        if (blueprintJustApplied) await saveData(data);
         renderAll(data);
     }
+
+    initCollapsibleSections();
 
     initializeYearSelector();
 
